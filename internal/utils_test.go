@@ -135,7 +135,7 @@ func TestChunkSlice(t *testing.T) {
 			chunk:       -1,
 			sequence:    []int{1},
 			expectedSeq: []int{1},
-			expectedRes: nil,
+			expectedRes: [][]int{},
 			expectedErr: InvalidChunkSizeErr,
 		},
 		{

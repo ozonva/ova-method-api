@@ -15,7 +15,7 @@ func ChunkSlice(slice []int, size int) ([][]int, error) {
 		return [][]int{}, nil
 	}
 	if size < 0 {
-		return nil, InvalidChunkSizeErr
+		return [][]int{}, InvalidChunkSizeErr
 	}
 
 	chunkCnt := sliceLen / size
