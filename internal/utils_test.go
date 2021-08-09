@@ -7,10 +7,16 @@ import (
 
 func TestFlipMap(t *testing.T) {
 	testCases := []struct {
-		sequence    map[int]int
-		expectedSeq map[int]int
-		expectedRes map[int]int
+		sequence      map[int]int
+		expectedSeq   map[int]int
+		expectedRes   map[int]int
+		panicExpected bool
 	}{
+		{
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: map[int]int{},
+		},
 		{
 			sequence:    map[int]int{},
 			expectedSeq: map[int]int{},
@@ -27,9 +33,10 @@ func TestFlipMap(t *testing.T) {
 			expectedRes: map[int]int{2: 1},
 		},
 		{
-			sequence:    map[int]int{1: 2, 2: 2},
-			expectedSeq: map[int]int{1: 2, 2: 2},
-			expectedRes: map[int]int{2: 2},
+			sequence:      map[int]int{1: 2, 2: 2},
+			expectedSeq:   map[int]int{1: 2, 2: 2},
+			expectedRes:   map[int]int{2: 2},
+			panicExpected: true,
 		},
 		{
 			sequence:    map[int]int{1: 2, 2: 3},
@@ -39,6 +46,11 @@ func TestFlipMap(t *testing.T) {
 	}
 
 	for index, testCase := range testCases {
+		if testCase.panicExpected {
+			assertPanic(t, index, func() { FlipMap(testCase.sequence) })
+			continue
+		}
+
 		result := FlipMap(testCase.sequence)
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
 			testError(t, index, testCase.expectedRes, result)
@@ -55,6 +67,11 @@ func TestFilterSlice(t *testing.T) {
 		expectedSeq []int
 		expectedRes []int
 	}{
+		{
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: []int{},
+		},
 		{
 			sequence:    []int{},
 			expectedSeq: []int{},
@@ -94,7 +111,20 @@ func TestChunkSlice(t *testing.T) {
 		sequence    []int
 		expectedSeq []int
 		expectedRes [][]int
+		expectedErr error
 	}{
+		{
+			chunk:       0,
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: [][]int{},
+		},
+		{
+			chunk:       2,
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: [][]int{},
+		},
 		{
 			chunk:       0,
 			sequence:    []int{},
@@ -103,9 +133,10 @@ func TestChunkSlice(t *testing.T) {
 		},
 		{
 			chunk:       -1,
-			sequence:    []int{},
-			expectedSeq: []int{},
-			expectedRes: [][]int{},
+			sequence:    []int{1},
+			expectedSeq: []int{1},
+			expectedRes: nil,
+			expectedErr: InvalidChunkSizeErr,
 		},
 		{
 			chunk:       10,
@@ -128,7 +159,10 @@ func TestChunkSlice(t *testing.T) {
 	}
 
 	for index, testCase := range testCases {
-		result := ChunkSlice(testCase.sequence, testCase.chunk)
+		result, err := ChunkSlice(testCase.sequence, testCase.chunk)
+		if err != testCase.expectedErr {
+			t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, testCase.expectedErr, err)
+		}
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
 			testError(t, index, testCase.expectedRes, result)
 		}
@@ -136,6 +170,15 @@ func TestChunkSlice(t *testing.T) {
 			mutateError(t, index, testCase.expectedRes, result)
 		}
 	}
+}
+
+func assertPanic(t *testing.T, index int, cb func()) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("failed testCase[%d], panic expected", index)
+		}
+	}()
+	cb()
 }
 
 func testError(t *testing.T, index int, expectedRes, result interface{}) {

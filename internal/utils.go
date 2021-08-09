@@ -1,11 +1,21 @@
 package internal
 
+import "fmt"
+
 type empty struct{}
 
-func ChunkSlice(slice []int, size int) [][]int {
+var (
+	DuplicateKeyErr     = fmt.Errorf("duplicate key")
+	InvalidChunkSizeErr = fmt.Errorf("invalid chunk size")
+)
+
+func ChunkSlice(slice []int, size int) ([][]int, error) {
 	sliceLen := len(slice)
-	if sliceLen == 0 || size <= 0 {
-		return [][]int{}
+	if sliceLen == 0 || size == 0 {
+		return [][]int{}, nil
+	}
+	if size < 0 {
+		return nil, InvalidChunkSizeErr
 	}
 
 	chunkCnt := sliceLen / size
@@ -28,7 +38,7 @@ func ChunkSlice(slice []int, size int) [][]int {
 		result[i] = slice[from:to]
 	}
 
-	return result
+	return result, nil
 }
 
 func FilterSlice(slice []int) []int {
@@ -54,6 +64,9 @@ func FilterSlice(slice []int) []int {
 func FlipMap(list map[int]int) map[int]int {
 	result := make(map[int]int, len(list))
 	for index, val := range list {
+		if _, ok := result[val]; ok {
+			panic(DuplicateKeyErr)
+		}
 		result[val] = index
 	}
 
