@@ -3,6 +3,8 @@ package internal
 import (
 	"reflect"
 	"testing"
+
+	"ova-method-api/internal/model"
 )
 
 func TestFlipMap(t *testing.T) {
@@ -160,6 +162,117 @@ func TestChunkSlice(t *testing.T) {
 
 	for index, testCase := range testCases {
 		result, err := ChunkSlice(testCase.sequence, testCase.chunk)
+		if err != testCase.expectedErr {
+			t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, testCase.expectedErr, err)
+		}
+		if !reflect.DeepEqual(result, testCase.expectedRes) {
+			testError(t, index, testCase.expectedRes, result)
+		}
+		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
+			mutateError(t, index, testCase.expectedRes, result)
+		}
+	}
+}
+
+func TestListOfMethodToUserMap(t *testing.T) {
+	testCases := []struct {
+		sequence    []model.Method
+		expectedSeq []model.Method
+		expectedRes map[uint64]model.Method
+		expectedErr error
+	}{
+		{
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: map[uint64]model.Method{},
+		},
+		{
+			sequence:    []model.Method{},
+			expectedSeq: []model.Method{},
+			expectedRes: map[uint64]model.Method{},
+		},
+		{
+			sequence:    []model.Method{{UserId: 1}, {UserId: 2}},
+			expectedSeq: []model.Method{{UserId: 1}, {UserId: 2}},
+			expectedRes: map[uint64]model.Method{1: {UserId: 1}, 2: {UserId: 2}},
+		},
+		{
+			sequence:    []model.Method{{UserId: 1, Value: "1"}, {UserId: 1, Value: "2"}},
+			expectedSeq: []model.Method{{UserId: 1, Value: "1"}, {UserId: 1, Value: "2"}},
+			expectedRes: map[uint64]model.Method{1: {UserId: 1, Value: "2"}},
+			expectedErr: DuplicateKeyErr,
+		},
+	}
+
+	for index, testCase := range testCases {
+		result, err := ListOfMethodToUserMap(testCase.sequence)
+		if err != testCase.expectedErr {
+			t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, testCase.expectedErr, err)
+		}
+		if !reflect.DeepEqual(result, testCase.expectedRes) {
+			testError(t, index, testCase.expectedRes, result)
+		}
+		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
+			mutateError(t, index, testCase.expectedRes, result)
+		}
+	}
+}
+
+func TestListOfMethodToChunkSlice(t *testing.T) {
+	testCases := []struct {
+		chunk       int
+		sequence    []model.Method
+		expectedSeq []model.Method
+		expectedRes [][]model.Method
+		expectedErr error
+	}{
+		{
+			chunk:       0,
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: [][]model.Method{},
+		},
+		{
+			chunk:       2,
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: [][]model.Method{},
+		},
+		{
+			chunk:       0,
+			sequence:    []model.Method{},
+			expectedSeq: []model.Method{},
+			expectedRes: [][]model.Method{},
+		},
+		{
+			chunk:       -1,
+			sequence:    []model.Method{{Value: "1"}},
+			expectedSeq: []model.Method{{Value: "1"}},
+			expectedRes: [][]model.Method{},
+			expectedErr: InvalidChunkSizeErr,
+		},
+		{
+			chunk:       10,
+			sequence:    []model.Method{{Value: "1"}},
+			expectedSeq: []model.Method{{Value: "1"}},
+			expectedRes: [][]model.Method{{{Value: "1"}}},
+		},
+		{
+			chunk:       2,
+			sequence:    []model.Method{{Value: "1"}, {Value: "2"}},
+			expectedSeq: []model.Method{{Value: "1"}, {Value: "2"}},
+			expectedRes: [][]model.Method{{{Value: "1"}, {Value: "2"}}},
+		},
+		{
+			chunk:       2,
+			sequence:    []model.Method{{Value: "1"}, {Value: "2"}, {Value: "3"}},
+			expectedSeq: []model.Method{{Value: "1"}, {Value: "2"}, {Value: "3"}},
+			expectedRes: [][]model.Method{{{Value: "1"}, {Value: "2"}}, {{Value: "3"}}},
+		},
+	}
+
+	for index, testCase := range testCases {
+		result, err := ListOfMethodToChunkSlice(testCase.sequence, testCase.chunk)
 		if err != testCase.expectedErr {
 			t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, testCase.expectedErr, err)
 		}
