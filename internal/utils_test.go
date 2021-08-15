@@ -55,10 +55,10 @@ func TestFlipMap(t *testing.T) {
 
 		result := FlipMap(testCase.sequence)
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
-			testError(t, index, testCase.expectedRes, result)
+			testAssertError(t, index, testCase.expectedRes, result)
 		}
 		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
-			mutateError(t, index, testCase.expectedRes, result)
+			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
 }
@@ -99,10 +99,10 @@ func TestFilterSlice(t *testing.T) {
 	for index, testCase := range testCases {
 		result := FilterSlice(testCase.sequence)
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
-			testError(t, index, testCase.expectedRes, result)
+			testAssertError(t, index, testCase.expectedRes, result)
 		}
 		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
-			mutateError(t, index, testCase.expectedRes, result)
+			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
 }
@@ -163,13 +163,13 @@ func TestChunkSlice(t *testing.T) {
 	for index, testCase := range testCases {
 		result, err := ChunkSlice(testCase.sequence, testCase.chunk)
 		if err != testCase.expectedErr {
-			t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, testCase.expectedErr, err)
+			testWantError(t, index, testCase.expectedErr, err)
 		}
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
-			testError(t, index, testCase.expectedRes, result)
+			testAssertError(t, index, testCase.expectedRes, result)
 		}
 		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
-			mutateError(t, index, testCase.expectedRes, result)
+			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
 }
@@ -207,13 +207,13 @@ func TestListOfMethodToUserMap(t *testing.T) {
 	for index, testCase := range testCases {
 		result, err := ListOfMethodToUserMap(testCase.sequence)
 		if err != testCase.expectedErr {
-			t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, testCase.expectedErr, err)
+			testWantError(t, index, testCase.expectedErr, err)
 		}
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
-			testError(t, index, testCase.expectedRes, result)
+			testAssertError(t, index, testCase.expectedRes, result)
 		}
 		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
-			mutateError(t, index, testCase.expectedRes, result)
+			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
 }
@@ -274,13 +274,13 @@ func TestListOfMethodToChunkSlice(t *testing.T) {
 	for index, testCase := range testCases {
 		result, err := ListOfMethodToChunkSlice(testCase.sequence, testCase.chunk)
 		if err != testCase.expectedErr {
-			t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, testCase.expectedErr, err)
+			testWantError(t, index, testCase.expectedErr, err)
 		}
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
-			testError(t, index, testCase.expectedRes, result)
+			testAssertError(t, index, testCase.expectedRes, result)
 		}
 		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
-			mutateError(t, index, testCase.expectedRes, result)
+			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
 }
@@ -294,11 +294,15 @@ func assertPanic(t *testing.T, index int, cb func()) {
 	cb()
 }
 
-func testError(t *testing.T, index int, expectedRes, result interface{}) {
+func testWantError(t *testing.T, index int, expectedErr, err error) {
+	t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, expectedErr, err)
+}
+
+func testAssertError(t *testing.T, index int, expectedRes, result interface{}) {
 	t.Errorf("failed testCase[%d], expected %v got %v", index, expectedRes, result)
 }
 
-func mutateError(t *testing.T, index int, expectedRes, result interface{}) {
+func testMutateError(t *testing.T, index int, expectedRes, result interface{}) {
 	t.Errorf(
 		"failed testCase[%d], data has been mutated, before %v after %v",
 		index, expectedRes, result,
