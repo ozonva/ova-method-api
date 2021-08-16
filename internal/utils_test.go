@@ -120,6 +120,7 @@ func TestChunkSlice(t *testing.T) {
 			sequence:    nil,
 			expectedSeq: nil,
 			expectedRes: [][]int{},
+			expectedErr: InvalidChunkSizeErr,
 		},
 		{
 			chunk:       2,
@@ -128,7 +129,7 @@ func TestChunkSlice(t *testing.T) {
 			expectedRes: [][]int{},
 		},
 		{
-			chunk:       0,
+			chunk:       1,
 			sequence:    []int{},
 			expectedSeq: []int{},
 			expectedRes: [][]int{},
@@ -199,7 +200,7 @@ func TestListOfMethodToUserMap(t *testing.T) {
 		{
 			sequence:    []model.Method{{UserId: 1, Value: "1"}, {UserId: 1, Value: "2"}},
 			expectedSeq: []model.Method{{UserId: 1, Value: "1"}, {UserId: 1, Value: "2"}},
-			expectedRes: map[uint64]model.Method{1: {UserId: 1, Value: "2"}},
+			expectedRes: nil,
 			expectedErr: DuplicateKeyErr,
 		},
 	}
@@ -231,6 +232,7 @@ func TestListOfMethodToChunkSlice(t *testing.T) {
 			sequence:    nil,
 			expectedSeq: nil,
 			expectedRes: [][]model.Method{},
+			expectedErr: InvalidChunkSizeErr,
 		},
 		{
 			chunk:       2,
@@ -239,7 +241,7 @@ func TestListOfMethodToChunkSlice(t *testing.T) {
 			expectedRes: [][]model.Method{},
 		},
 		{
-			chunk:       0,
+			chunk:       1,
 			sequence:    []model.Method{},
 			expectedSeq: []model.Method{},
 			expectedRes: [][]model.Method{},

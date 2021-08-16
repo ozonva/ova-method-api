@@ -11,15 +11,11 @@ type empty struct{}
 var (
 	DuplicateKeyErr     = fmt.Errorf("duplicate key")
 	InvalidChunkSizeErr = fmt.Errorf("invalid chunk size")
-	EmptyChunkResultErr = fmt.Errorf("empty chunk result")
 )
 
 func ChunkSlice(slice []int, size int) ([][]int, error) {
 	sliceLen := len(slice)
 	chunkCnt, step, err := calcChunkParams(sliceLen, size)
-	if err == EmptyChunkResultErr {
-		return [][]int{}, nil
-	}
 	if err == InvalidChunkSizeErr {
 		return [][]int{}, InvalidChunkSizeErr
 	}
@@ -34,11 +30,11 @@ func ChunkSlice(slice []int, size int) ([][]int, error) {
 }
 
 func calcChunkParams(sliceLen, size int) (chunkCnt int, step int, err error) {
-	if sliceLen == 0 || size == 0 {
-		return 0, 0, EmptyChunkResultErr
-	}
-	if size < 0 {
+	if size <= 0 {
 		return 0, 0, InvalidChunkSizeErr
+	}
+	if sliceLen == 0 {
+		return 0, 0, nil
 	}
 
 	chunkCnt = sliceLen / size
@@ -95,24 +91,20 @@ func FlipMap(list map[int]int) map[int]int {
 }
 
 func ListOfMethodToUserMap(list []model.Method) (map[uint64]model.Method, error) {
-	var err error
 	result := make(map[uint64]model.Method, len(list))
 	for _, method := range list {
 		if _, ok := result[method.UserId]; ok {
-			err = DuplicateKeyErr
+			return nil, DuplicateKeyErr
 		}
 		result[method.UserId] = method
 	}
 
-	return result, err
+	return result, nil
 }
 
 func ListOfMethodToChunkSlice(list []model.Method, size int) ([][]model.Method, error) {
 	sliceLen := len(list)
 	chunkCnt, step, err := calcChunkParams(sliceLen, size)
-	if err == EmptyChunkResultErr {
-		return [][]model.Method{}, nil
-	}
 	if err == InvalidChunkSizeErr {
 		return [][]model.Method{}, InvalidChunkSizeErr
 	}
