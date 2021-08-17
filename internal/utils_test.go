@@ -3,6 +3,8 @@ package internal
 import (
 	"reflect"
 	"testing"
+
+	"ova-method-api/internal/model"
 )
 
 func TestFlipMap(t *testing.T) {
@@ -53,10 +55,10 @@ func TestFlipMap(t *testing.T) {
 
 		result := FlipMap(testCase.sequence)
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
-			testError(t, index, testCase.expectedRes, result)
+			testAssertError(t, index, testCase.expectedRes, result)
 		}
 		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
-			mutateError(t, index, testCase.expectedRes, result)
+			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
 }
@@ -97,10 +99,10 @@ func TestFilterSlice(t *testing.T) {
 	for index, testCase := range testCases {
 		result := FilterSlice(testCase.sequence)
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
-			testError(t, index, testCase.expectedRes, result)
+			testAssertError(t, index, testCase.expectedRes, result)
 		}
 		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
-			mutateError(t, index, testCase.expectedRes, result)
+			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
 }
@@ -118,6 +120,7 @@ func TestChunkSlice(t *testing.T) {
 			sequence:    nil,
 			expectedSeq: nil,
 			expectedRes: [][]int{},
+			expectedErr: InvalidChunkSizeErr,
 		},
 		{
 			chunk:       2,
@@ -126,7 +129,7 @@ func TestChunkSlice(t *testing.T) {
 			expectedRes: [][]int{},
 		},
 		{
-			chunk:       0,
+			chunk:       1,
 			sequence:    []int{},
 			expectedSeq: []int{},
 			expectedRes: [][]int{},
@@ -161,13 +164,125 @@ func TestChunkSlice(t *testing.T) {
 	for index, testCase := range testCases {
 		result, err := ChunkSlice(testCase.sequence, testCase.chunk)
 		if err != testCase.expectedErr {
-			t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, testCase.expectedErr, err)
+			testWantError(t, index, testCase.expectedErr, err)
 		}
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
-			testError(t, index, testCase.expectedRes, result)
+			testAssertError(t, index, testCase.expectedRes, result)
 		}
 		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
-			mutateError(t, index, testCase.expectedRes, result)
+			testMutateError(t, index, testCase.expectedRes, result)
+		}
+	}
+}
+
+func TestListOfMethodToUserMap(t *testing.T) {
+	testCases := []struct {
+		sequence    []model.Method
+		expectedSeq []model.Method
+		expectedRes map[uint64]model.Method
+		expectedErr error
+	}{
+		{
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: map[uint64]model.Method{},
+		},
+		{
+			sequence:    []model.Method{},
+			expectedSeq: []model.Method{},
+			expectedRes: map[uint64]model.Method{},
+		},
+		{
+			sequence:    []model.Method{{UserId: 1}, {UserId: 2}},
+			expectedSeq: []model.Method{{UserId: 1}, {UserId: 2}},
+			expectedRes: map[uint64]model.Method{1: {UserId: 1}, 2: {UserId: 2}},
+		},
+		{
+			sequence:    []model.Method{{UserId: 1, Value: "1"}, {UserId: 1, Value: "2"}},
+			expectedSeq: []model.Method{{UserId: 1, Value: "1"}, {UserId: 1, Value: "2"}},
+			expectedRes: nil,
+			expectedErr: DuplicateKeyErr,
+		},
+	}
+
+	for index, testCase := range testCases {
+		result, err := ListOfMethodToUserMap(testCase.sequence)
+		if err != testCase.expectedErr {
+			testWantError(t, index, testCase.expectedErr, err)
+		}
+		if !reflect.DeepEqual(result, testCase.expectedRes) {
+			testAssertError(t, index, testCase.expectedRes, result)
+		}
+		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
+			testMutateError(t, index, testCase.expectedRes, result)
+		}
+	}
+}
+
+func TestListOfMethodToChunkSlice(t *testing.T) {
+	testCases := []struct {
+		chunk       int
+		sequence    []model.Method
+		expectedSeq []model.Method
+		expectedRes [][]model.Method
+		expectedErr error
+	}{
+		{
+			chunk:       0,
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: [][]model.Method{},
+			expectedErr: InvalidChunkSizeErr,
+		},
+		{
+			chunk:       2,
+			sequence:    nil,
+			expectedSeq: nil,
+			expectedRes: [][]model.Method{},
+		},
+		{
+			chunk:       1,
+			sequence:    []model.Method{},
+			expectedSeq: []model.Method{},
+			expectedRes: [][]model.Method{},
+		},
+		{
+			chunk:       -1,
+			sequence:    []model.Method{{Value: "1"}},
+			expectedSeq: []model.Method{{Value: "1"}},
+			expectedRes: [][]model.Method{},
+			expectedErr: InvalidChunkSizeErr,
+		},
+		{
+			chunk:       10,
+			sequence:    []model.Method{{Value: "1"}},
+			expectedSeq: []model.Method{{Value: "1"}},
+			expectedRes: [][]model.Method{{{Value: "1"}}},
+		},
+		{
+			chunk:       2,
+			sequence:    []model.Method{{Value: "1"}, {Value: "2"}},
+			expectedSeq: []model.Method{{Value: "1"}, {Value: "2"}},
+			expectedRes: [][]model.Method{{{Value: "1"}, {Value: "2"}}},
+		},
+		{
+			chunk:       2,
+			sequence:    []model.Method{{Value: "1"}, {Value: "2"}, {Value: "3"}},
+			expectedSeq: []model.Method{{Value: "1"}, {Value: "2"}, {Value: "3"}},
+			expectedRes: [][]model.Method{{{Value: "1"}, {Value: "2"}}, {{Value: "3"}}},
+		},
+	}
+
+	for index, testCase := range testCases {
+		result, err := ListOfMethodToChunkSlice(testCase.sequence, testCase.chunk)
+		if err != testCase.expectedErr {
+			testWantError(t, index, testCase.expectedErr, err)
+		}
+		if !reflect.DeepEqual(result, testCase.expectedRes) {
+			testAssertError(t, index, testCase.expectedRes, result)
+		}
+		if !reflect.DeepEqual(testCase.sequence, testCase.expectedSeq) {
+			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
 }
@@ -181,11 +296,15 @@ func assertPanic(t *testing.T, index int, cb func()) {
 	cb()
 }
 
-func testError(t *testing.T, index int, expectedRes, result interface{}) {
+func testWantError(t *testing.T, index int, expectedErr, err error) {
+	t.Errorf("failed testCase[%d], error expected '%v' got '%v'", index, expectedErr, err)
+}
+
+func testAssertError(t *testing.T, index int, expectedRes, result interface{}) {
 	t.Errorf("failed testCase[%d], expected %v got %v", index, expectedRes, result)
 }
 
-func mutateError(t *testing.T, index int, expectedRes, result interface{}) {
+func testMutateError(t *testing.T, index int, expectedRes, result interface{}) {
 	t.Errorf(
 		"failed testCase[%d], data has been mutated, before %v after %v",
 		index, expectedRes, result,
