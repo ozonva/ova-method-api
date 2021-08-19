@@ -7,5 +7,8 @@ build: ## Build bin file for current OS
 run: ## Build and run application (go run)
 	go run ./cmd/ova-method-api/main.go
 
+gen: ## Code generation
+	go generate ./...
+
 test: ## Run tests
-	go test -cover -v ./internal
+	ginkgo -cover -r -v
