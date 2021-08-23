@@ -37,7 +37,7 @@ var _ = Describe("Flusher", func() {
 			},
 			Entry("chunk 0", 0, sequence, sequence),
 			Entry("chunk -1", -1, sequence, sequence),
-			Entry("nothing to flush", 1, nil, []model.Method{}),
+			Entry("nothing to flush", 1, nil, nil),
 		)
 
 		DescribeTable("repository add equal",
@@ -47,7 +47,7 @@ var _ = Describe("Flusher", func() {
 				Expect(result).To(Equal(expected))
 			},
 			Entry("add error", sequence, sequence, flushErr),
-			Entry("add success", sequence, []model.Method{}, nil),
+			Entry("add success", sequence, nil, nil),
 		)
 
 		It("partial flush", func() {

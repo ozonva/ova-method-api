@@ -31,7 +31,7 @@ func (f *flusher) Flush(items []model.Method) []model.Method {
 		return items
 	}
 
-	result := make([]model.Method, 0, len(items))
+	var result []model.Method
 	for _, chunk := range chunkedItems {
 		if err = f.methodRepo.Add(chunk); err != nil {
 			log.Println(err)
