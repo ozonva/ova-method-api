@@ -3,16 +3,18 @@ package saver
 import (
 	"context"
 	"fmt"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
 	"ova-method-api/internal/flusher"
 	"ova-method-api/internal/model"
 	"ova-method-api/internal/repo/mock"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestSaver(t *testing.T) {
