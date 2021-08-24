@@ -23,9 +23,9 @@ type saver struct {
 	flusher flusher.Flusher
 }
 
-func New(ctx context.Context, capacity, retry, delay uint, flusher flusher.Flusher) Saver {
+func New(ctx context.Context, capacity, delay uint, flusher flusher.Flusher) Saver {
 	s := &saver{
-		retry:   retry,
+		retry:   2,
 		flusher: flusher,
 		delay:   time.Duration(delay) * time.Second,
 		buffer:  make([]model.Method, 0, capacity),
