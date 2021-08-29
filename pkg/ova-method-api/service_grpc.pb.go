@@ -7,6 +7,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -18,8 +19,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OvaMethodApiClient interface {
-	Create(ctx context.Context, in *CreateMethodRequest, opts ...grpc.CallOption) (*MethodItem, error)
-	Remove(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*Status, error)
+	Create(ctx context.Context, in *CreateMethodRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Remove(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Describe(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*MethodInfo, error)
 	List(ctx context.Context, in *MethodListRequest, opts ...grpc.CallOption) (*MethodList, error)
 }
@@ -32,8 +33,8 @@ func NewOvaMethodApiClient(cc grpc.ClientConnInterface) OvaMethodApiClient {
 	return &ovaMethodApiClient{cc}
 }
 
-func (c *ovaMethodApiClient) Create(ctx context.Context, in *CreateMethodRequest, opts ...grpc.CallOption) (*MethodItem, error) {
-	out := new(MethodItem)
+func (c *ovaMethodApiClient) Create(ctx context.Context, in *CreateMethodRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -41,8 +42,8 @@ func (c *ovaMethodApiClient) Create(ctx context.Context, in *CreateMethodRequest
 	return out, nil
 }
 
-func (c *ovaMethodApiClient) Remove(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*Status, error) {
-	out := new(Status)
+func (c *ovaMethodApiClient) Remove(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/Remove", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -72,8 +73,8 @@ func (c *ovaMethodApiClient) List(ctx context.Context, in *MethodListRequest, op
 // All implementations must embed UnimplementedOvaMethodApiServer
 // for forward compatibility
 type OvaMethodApiServer interface {
-	Create(context.Context, *CreateMethodRequest) (*MethodItem, error)
-	Remove(context.Context, *MethodIdRequest) (*Status, error)
+	Create(context.Context, *CreateMethodRequest) (*emptypb.Empty, error)
+	Remove(context.Context, *MethodIdRequest) (*emptypb.Empty, error)
 	Describe(context.Context, *MethodIdRequest) (*MethodInfo, error)
 	List(context.Context, *MethodListRequest) (*MethodList, error)
 	mustEmbedUnimplementedOvaMethodApiServer()
@@ -83,10 +84,10 @@ type OvaMethodApiServer interface {
 type UnimplementedOvaMethodApiServer struct {
 }
 
-func (UnimplementedOvaMethodApiServer) Create(context.Context, *CreateMethodRequest) (*MethodItem, error) {
+func (UnimplementedOvaMethodApiServer) Create(context.Context, *CreateMethodRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedOvaMethodApiServer) Remove(context.Context, *MethodIdRequest) (*Status, error) {
+func (UnimplementedOvaMethodApiServer) Remove(context.Context, *MethodIdRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Remove not implemented")
 }
 func (UnimplementedOvaMethodApiServer) Describe(context.Context, *MethodIdRequest) (*MethodInfo, error) {
