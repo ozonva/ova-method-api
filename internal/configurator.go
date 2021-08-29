@@ -5,11 +5,16 @@ import (
 	"os"
 )
 
-type application struct {
+type Application struct {
 	Version string
+	Grpc    grpcConfig
 }
 
-func LoadConfig(configDir string) {
+type grpcConfig struct {
+	Addr string
+}
+
+func LoadConfig(projectDir string) *Application {
 	readConfig := func(app interface{}, path string) (err error) {
 		f, err := os.Open(path)
 		if err != nil {
@@ -22,13 +27,13 @@ func LoadConfig(configDir string) {
 		return json.NewDecoder(f).Decode(app)
 	}
 
-	configPath := configDir + "/configs/app.json"
+	configPath := projectDir + "/configs/app.json"
 
-	for i := 0; i < 5; i++ {
-		app := &application{}
-		err := readConfig(app, configPath)
-		if err != nil {
-			panic(err)
-		}
+	app := &Application{}
+	err := readConfig(app, configPath)
+	if err != nil {
+		panic(err)
 	}
+
+	return app
 }

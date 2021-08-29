@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+option go_package = "./;ova_method_api";
+
+package ova.method.api;
+
+message MethodIdRequest {
+  uint64 id = 1;
+}
+
+message CreateMethodRequest {
+  string value = 1;
+}
+
+message MethodListRequest {
+  uint64 page  = 2;
+  uint64 limit = 1;
+}
+
+message MethodItem {
+  uint64 id         = 1;
+  uint64 user_id    = 2;
+  string value      = 3;
+  int64  created_at = 4;
+}
+
+message MethodList {
+  repeated MethodItem methods = 1;
+}
+
+message MethodInfo {
+  string info = 1;
+}
+
+message Status {
+  bool Success = 1;
+}
+
+service OvaMethodApi {
+  rpc Create (CreateMethodRequest) returns (MethodItem) {}
+  rpc Remove (MethodIdRequest) returns (Status) {}
+  rpc Describe (MethodIdRequest) returns (MethodInfo) {}
+  rpc List (MethodListRequest) returns (MethodList) {}
+}
