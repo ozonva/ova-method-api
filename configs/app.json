@@ -3,5 +3,18 @@
 
   "grpc": {
     "addr": "localhost:3000"
+  },
+
+  "database": {
+    "driver": "pgx",
+    "host": "localhost",
+    "port": "5432",
+    "user": "root",
+    "pass": "123456",
+    "db": "ova",
+
+    "MaxOpenConns": 2,
+    "MaxIdleConns": 1,
+    "ConnMaxLifetime": 300
   }
 }

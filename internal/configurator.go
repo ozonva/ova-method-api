@@ -2,16 +2,47 @@ package internal
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
 type Application struct {
-	Version string
-	Grpc    grpcConfig
+	Version  string
+	Grpc     grpcConfig
+	Database databaseConfig
 }
 
 type grpcConfig struct {
 	Addr string
+}
+
+type databaseConfig struct {
+	Driver string
+	Host   string
+	Port   string
+	User   string
+	Pass   string
+	Db     string
+
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime int
+}
+
+func (dc *databaseConfig) String() string {
+	switch dc.Driver {
+	case "pgx":
+		return fmt.Sprintf(
+			"postgres://%s:%s@%s:%s/%s",
+			dc.User,
+			dc.Pass,
+			dc.Host,
+			dc.Port,
+			dc.Db,
+		)
+	default:
+		return ""
+	}
 }
 
 func LoadConfig(projectDir string) *Application {
