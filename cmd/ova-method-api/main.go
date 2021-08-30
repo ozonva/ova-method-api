@@ -5,8 +5,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"ova-method-api/internal/model"
-	"ova-method-api/internal/repo"
 	"time"
 
 	_ "github.com/jackc/pgx/stdlib"
@@ -17,6 +15,7 @@ import (
 
 	"ova-method-api/internal"
 	"ova-method-api/internal/app"
+	"ova-method-api/internal/repo"
 	igrpc "ova-method-api/pkg/ova-method-api"
 )
 
@@ -56,7 +55,7 @@ func getConfig() *internal.Application {
 func connectToDatabase(cnf *internal.Application) {
 	db, err := sqlx.Connect(cnf.Database.Driver, cnf.Database.String())
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed create db connect")
+		log.Fatal().Err(err).Msg("failed create db connection")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
@@ -74,11 +73,6 @@ func connectToDatabase(cnf *internal.Application) {
 }
 
 func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
-	err := rep.Add([]model.Method{{UserId: 1, Value: "1"}, {UserId: 1, Value: "2"}})
-	if err != nil {
-		log.Fatal().Err(err).Msg("insert")
-	}
-
 	listen, err := net.Listen("tcp", cnf.Grpc.Addr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create net listen")
@@ -98,4 +92,8 @@ func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
 func shutdown() {
 	server.GracefulStop()
 	log.Info().Msg("GRPC server stopped")
+
+	if err := conn.Close(); err != nil {
+		log.Fatal().Err(err).Msg("failed close db connection")
+	}
 }

@@ -21,8 +21,8 @@ const _ = grpc.SupportPackageIsVersion7
 type OvaMethodApiClient interface {
 	Create(ctx context.Context, in *CreateMethodRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Remove(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Describe(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*MethodInfo, error)
-	List(ctx context.Context, in *MethodListRequest, opts ...grpc.CallOption) (*MethodList, error)
+	Describe(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*MethodInfoResponse, error)
+	List(ctx context.Context, in *MethodListRequest, opts ...grpc.CallOption) (*MethodListResponse, error)
 }
 
 type ovaMethodApiClient struct {
@@ -51,8 +51,8 @@ func (c *ovaMethodApiClient) Remove(ctx context.Context, in *MethodIdRequest, op
 	return out, nil
 }
 
-func (c *ovaMethodApiClient) Describe(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*MethodInfo, error) {
-	out := new(MethodInfo)
+func (c *ovaMethodApiClient) Describe(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*MethodInfoResponse, error) {
+	out := new(MethodInfoResponse)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/Describe", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -60,8 +60,8 @@ func (c *ovaMethodApiClient) Describe(ctx context.Context, in *MethodIdRequest, 
 	return out, nil
 }
 
-func (c *ovaMethodApiClient) List(ctx context.Context, in *MethodListRequest, opts ...grpc.CallOption) (*MethodList, error) {
-	out := new(MethodList)
+func (c *ovaMethodApiClient) List(ctx context.Context, in *MethodListRequest, opts ...grpc.CallOption) (*MethodListResponse, error) {
+	out := new(MethodListResponse)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/List", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -75,8 +75,8 @@ func (c *ovaMethodApiClient) List(ctx context.Context, in *MethodListRequest, op
 type OvaMethodApiServer interface {
 	Create(context.Context, *CreateMethodRequest) (*emptypb.Empty, error)
 	Remove(context.Context, *MethodIdRequest) (*emptypb.Empty, error)
-	Describe(context.Context, *MethodIdRequest) (*MethodInfo, error)
-	List(context.Context, *MethodListRequest) (*MethodList, error)
+	Describe(context.Context, *MethodIdRequest) (*MethodInfoResponse, error)
+	List(context.Context, *MethodListRequest) (*MethodListResponse, error)
 	mustEmbedUnimplementedOvaMethodApiServer()
 }
 
@@ -90,10 +90,10 @@ func (UnimplementedOvaMethodApiServer) Create(context.Context, *CreateMethodRequ
 func (UnimplementedOvaMethodApiServer) Remove(context.Context, *MethodIdRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Remove not implemented")
 }
-func (UnimplementedOvaMethodApiServer) Describe(context.Context, *MethodIdRequest) (*MethodInfo, error) {
+func (UnimplementedOvaMethodApiServer) Describe(context.Context, *MethodIdRequest) (*MethodInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Describe not implemented")
 }
-func (UnimplementedOvaMethodApiServer) List(context.Context, *MethodListRequest) (*MethodList, error) {
+func (UnimplementedOvaMethodApiServer) List(context.Context, *MethodListRequest) (*MethodListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedOvaMethodApiServer) mustEmbedUnimplementedOvaMethodApiServer() {}

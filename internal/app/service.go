@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -10,6 +11,10 @@ import (
 	"ova-method-api/internal/model"
 	"ova-method-api/internal/repo"
 	igrpc "ova-method-api/pkg/ova-method-api"
+)
+
+var (
+	internalErr = status.Errorf(codes.Internal, "failed to process request")
 )
 
 type OvaMethodApi struct {
@@ -30,15 +35,15 @@ func (api *OvaMethodApi) Create(ctx context.Context, req *igrpc.CreateMethodRequ
 		return nil, status.Errorf(codes.InvalidArgument, "user id is required field")
 	}
 
-	err := api.rep.Add([]model.Method{
-		{
-			UserId: req.UserId,
-			Value:  req.Value,
-		},
-	})
+	err := api.rep.Add([]model.Method{{UserId: req.UserId, Value: req.Value}})
 	if err != nil {
-		// TODO log
-		return nil, status.Errorf(codes.Internal, "failed create method")
+		log.Error().
+			Uint64("user_id", req.UserId).
+			Str("value", req.Value).
+			Err(err).
+			Msg("failed create method")
+
+		return nil, internalErr
 	}
 
 	return &emptypb.Empty{}, nil
@@ -50,14 +55,18 @@ func (api *OvaMethodApi) Remove(ctx context.Context, req *igrpc.MethodIdRequest)
 	}
 
 	if err := api.rep.Remove(req.Id); err != nil {
-		// TODO log
-		return nil, status.Errorf(codes.Internal, "failed remove method")
+		log.Error().
+			Uint64("id", req.Id).
+			Err(err).
+			Msg("failed remove method")
+
+		return nil, internalErr
 	}
 
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (api *OvaMethodApi) Describe(ctx context.Context, req *igrpc.MethodIdRequest) (*igrpc.MethodInfo, error) {
+func (api *OvaMethodApi) Describe(ctx context.Context, req *igrpc.MethodIdRequest) (*igrpc.MethodInfoResponse, error) {
 	if req.Id == 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "id is required field")
 	}
@@ -67,28 +76,34 @@ func (api *OvaMethodApi) Describe(ctx context.Context, req *igrpc.MethodIdReques
 		return nil, status.Errorf(codes.NotFound, "method not found")
 	}
 	if err != nil {
-		// TODO log
-		return nil, status.Errorf(codes.Internal, "failed describe method")
+		log.Error().
+			Uint64("id", req.Id).
+			Err(err).
+			Msg("failed describe method")
+
+		return nil, internalErr
 	}
 
-	return &igrpc.MethodInfo{Info: method.String()}, nil
+	return &igrpc.MethodInfoResponse{Info: method.String()}, nil
 }
 
-func (api *OvaMethodApi) List(ctx context.Context, req *igrpc.MethodListRequest) (*igrpc.MethodList, error) {
+func (api *OvaMethodApi) List(ctx context.Context, req *igrpc.MethodListRequest) (*igrpc.MethodListResponse, error) {
 	if req.Limit == 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "incorrect limit value")
 	}
 
 	methods, err := api.rep.List(req.Limit, req.Offset)
-	if err == repo.ErrNoRows {
-		return nil, status.Errorf(codes.NotFound, "method not found")
-	}
-	if err != nil {
-		// TODO log
-		return nil, status.Errorf(codes.Internal, "failed list method")
+	if err != nil && err != repo.ErrNoRows {
+		log.Error().
+			Uint64("limit", req.Limit).
+			Uint64("offset", req.Offset).
+			Err(err).
+			Msg("failed list method")
+
+		return nil, internalErr
 	}
 
-	methodList := &igrpc.MethodList{
+	methodList := &igrpc.MethodListResponse{
 		Methods: make([]*igrpc.MethodItem, 0, len(methods)),
 	}
 

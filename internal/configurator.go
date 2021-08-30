@@ -41,7 +41,7 @@ func (dc *databaseConfig) String() string {
 			dc.Db,
 		)
 	default:
-		return ""
+		panic("driver not supported")
 	}
 }
 

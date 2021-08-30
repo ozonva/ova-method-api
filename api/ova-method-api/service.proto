@@ -20,6 +20,10 @@ message MethodListRequest {
   uint64 offset = 2;
 }
 
+message MethodListResponse {
+  repeated MethodItem methods = 1;
+}
+
 message MethodItem {
   uint64 id         = 1;
   uint64 user_id    = 2;
@@ -27,17 +31,13 @@ message MethodItem {
   int64  created_at = 4;
 }
 
-message MethodList {
-  repeated MethodItem methods = 1;
-}
-
-message MethodInfo {
+message MethodInfoResponse {
   string info = 1;
 }
 
 service OvaMethodApi {
   rpc Create (CreateMethodRequest) returns (google.protobuf.Empty) {}
   rpc Remove (MethodIdRequest) returns (google.protobuf.Empty) {}
-  rpc Describe (MethodIdRequest) returns (MethodInfo) {}
-  rpc List (MethodListRequest) returns (MethodList) {}
+  rpc Describe (MethodIdRequest) returns (MethodInfoResponse) {}
+  rpc List (MethodListRequest) returns (MethodListResponse) {}
 }
