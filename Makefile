@@ -29,7 +29,7 @@ deps: ## Install service dependencies
 	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1
 
 goose: ## Migration manager. Example: make goose cmd="-h"
-	@GOOSE_DRIVER=postgres GOOSE_DBSTRING="user=${DB_USER} password=${DB_PASS} dbname=${DB_NAME} sslmode=disable" goose -table migrations  -dir ./migrations $(cmd)
+	@GOOSE_DRIVER=postgres GOOSE_DBSTRING="user=${DB_USER} password=${DB_PASS} dbname=${DB_NAME} sslmode=disable" goose -table migrations -dir ./migrations $(cmd)
 
 start: ## Run environment
 	@DB_NAME=${DB_NAME} DB_USER=${DB_USER} DB_PASS=${DB_PASS} docker-compose -f ./deploy/docker-compose.yaml up -d
