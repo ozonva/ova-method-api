@@ -53,13 +53,13 @@ func getConfig() *internal.Application {
 }
 
 func connectToDatabase(cnf *internal.Application) {
-	db, err := sqlx.Connect(cnf.Database.Driver, cnf.Database.String())
+	ctx, cancel := context.WithTimeout(context.Background(), cnf.Database.GetConnTimeout())
+	defer cancel()
+
+	db, err := sqlx.Open(cnf.Database.Driver, cnf.Database.String())
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create db connection")
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
-	defer cancel()
 
 	if err = db.PingContext(ctx); err != nil {
 		log.Fatal().Err(err).Msg("failed ping db connection")
@@ -67,7 +67,7 @@ func connectToDatabase(cnf *internal.Application) {
 
 	db.SetMaxOpenConns(cnf.Database.MaxOpenConns)
 	db.SetMaxIdleConns(cnf.Database.MaxIdleConns)
-	db.SetConnMaxLifetime(time.Duration(cnf.Database.ConnMaxLifetime) * time.Second)
+	db.SetConnMaxLifetime(cnf.Database.GetConnMaxLifetime())
 
 	conn = db
 }

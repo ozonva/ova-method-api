@@ -3,9 +3,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"strconv"
 	"testing"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -42,6 +46,7 @@ var (
 )
 
 func TestOvaMethodApi(t *testing.T) {
+	initLoggerStub()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "OvaMethodApi suites")
 }
@@ -80,7 +85,7 @@ var _ = AfterSuite(func() {
 var _ = Describe("OvaMethodApi", func() {
 	Describe("Create", func() {
 		DescribeTable("check error",
-			func(req *proto.CreateMethodRequest, getExpectedRes func() (*emptypb.Empty, codes.Code)) {
+			func(req *proto.CreateRequest, getExpectedRes func() (*emptypb.Empty, codes.Code)) {
 				expectRes, expectCode := getExpectedRes()
 				result, err := client.Create(defaultCtx, req)
 				st, _ := status.FromError(err)
@@ -111,7 +116,7 @@ var _ = Describe("OvaMethodApi", func() {
 
 	Describe("Remove", func() {
 		DescribeTable("check error",
-			func(req *proto.MethodIdRequest, getExpectedRes func() (*emptypb.Empty, codes.Code)) {
+			func(req *proto.RemoveRequest, getExpectedRes func() (*emptypb.Empty, codes.Code)) {
 				expectRes, expectCode := getExpectedRes()
 				result, err := client.Remove(defaultCtx, req)
 				st, _ := status.FromError(err)
@@ -119,10 +124,10 @@ var _ = Describe("OvaMethodApi", func() {
 				Expect(st.Code()).To(Equal(expectCode))
 				Expect(result).To(Equal(expectRes))
 			},
-			Entry("required id field", makeIdReq(0), func() (*emptypb.Empty, codes.Code) {
+			Entry("required id field", makeRemoveReq(0), func() (*emptypb.Empty, codes.Code) {
 				return nil, codes.InvalidArgument
 			}),
-			Entry("rep error", makeIdReq(1), func() (*emptypb.Empty, codes.Code) {
+			Entry("rep error", makeRemoveReq(1), func() (*emptypb.Empty, codes.Code) {
 				rep.EXPECT().Remove(uint64(1)).Return(defaultErr)
 				return nil, codes.Internal
 			}),
@@ -131,7 +136,7 @@ var _ = Describe("OvaMethodApi", func() {
 		It("successful", func() {
 			rep.EXPECT().Remove(uint64(1)).Return(nil)
 
-			result, err := client.Remove(defaultCtx, makeIdReq(1))
+			result, err := client.Remove(defaultCtx, makeRemoveReq(1))
 			Expect(err).To(BeNil())
 			Expect(result).Should(BeAssignableToTypeOf(&emptypb.Empty{}))
 		})
@@ -139,7 +144,7 @@ var _ = Describe("OvaMethodApi", func() {
 
 	Describe("Describe", func() {
 		DescribeTable("check error",
-			func(req *proto.MethodIdRequest, getExpectedRes func() (*proto.MethodInfoResponse, codes.Code)) {
+			func(req *proto.DescribeRequest, getExpectedRes func() (*proto.DescribeResponse, codes.Code)) {
 				expectRes, expectCode := getExpectedRes()
 				result, err := client.Describe(defaultCtx, req)
 				st, _ := status.FromError(err)
@@ -147,14 +152,14 @@ var _ = Describe("OvaMethodApi", func() {
 				Expect(st.Code()).To(Equal(expectCode))
 				Expect(result).To(Equal(expectRes))
 			},
-			Entry("required id field", makeIdReq(0), func() (*proto.MethodInfoResponse, codes.Code) {
+			Entry("required id field", makeDescribeReq(0), func() (*proto.DescribeResponse, codes.Code) {
 				return nil, codes.InvalidArgument
 			}),
-			Entry("rep not found", makeIdReq(1), func() (*proto.MethodInfoResponse, codes.Code) {
+			Entry("rep not found", makeDescribeReq(1), func() (*proto.DescribeResponse, codes.Code) {
 				rep.EXPECT().Describe(uint64(1)).Return(nil, repo.ErrNoRows)
 				return nil, codes.NotFound
 			}),
-			Entry("rep error", makeIdReq(1), func() (*proto.MethodInfoResponse, codes.Code) {
+			Entry("rep error", makeDescribeReq(1), func() (*proto.DescribeResponse, codes.Code) {
 				rep.EXPECT().Describe(uint64(1)).Return(nil, defaultErr)
 				return nil, codes.Internal
 			}),
@@ -163,7 +168,7 @@ var _ = Describe("OvaMethodApi", func() {
 		It("successful", func() {
 			rep.EXPECT().Describe(uint64(1)).Return(&method, nil)
 
-			result, err := client.Describe(defaultCtx, makeIdReq(1))
+			result, err := client.Describe(defaultCtx, makeDescribeReq(1))
 			Expect(err).To(BeNil())
 			Expect(result.Info).To(Equal(method.String()))
 		})
@@ -171,7 +176,7 @@ var _ = Describe("OvaMethodApi", func() {
 
 	Describe("List", func() {
 		DescribeTable("check error",
-			func(req *proto.MethodListRequest, getExpectedRes func() (*proto.MethodListResponse, codes.Code)) {
+			func(req *proto.ListRequest, getExpectedRes func() (*proto.ListResponse, codes.Code)) {
 				expectRes, expectCode := getExpectedRes()
 				result, err := client.List(defaultCtx, req)
 				st, _ := status.FromError(err)
@@ -180,11 +185,11 @@ var _ = Describe("OvaMethodApi", func() {
 				Expect(result).To(Equal(expectRes))
 			},
 			Entry("incorrect limit", makeListReq(0, 0),
-				func() (*proto.MethodListResponse, codes.Code) {
+				func() (*proto.ListResponse, codes.Code) {
 					return nil, codes.InvalidArgument
 				}),
 			Entry("rep error", makeListReq(1, 0),
-				func() (*proto.MethodListResponse, codes.Code) {
+				func() (*proto.ListResponse, codes.Code) {
 					rep.EXPECT().List(uint64(1), uint64(0)).Return(nil, defaultErr)
 					return nil, codes.Internal
 				}),
@@ -226,21 +231,31 @@ var _ = Describe("OvaMethodApi", func() {
 	})
 })
 
-func makeCreateReq(userId uint64, value string) *proto.CreateMethodRequest {
-	return &proto.CreateMethodRequest{
+func initLoggerStub() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: ioutil.Discard})
+}
+
+func makeCreateReq(userId uint64, value string) *proto.CreateRequest {
+	return &proto.CreateRequest{
 		UserId: userId,
 		Value:  value,
 	}
 }
 
-func makeIdReq(id uint64) *proto.MethodIdRequest {
-	return &proto.MethodIdRequest{
+func makeRemoveReq(id uint64) *proto.RemoveRequest {
+	return &proto.RemoveRequest{
 		Id: id,
 	}
 }
 
-func makeListReq(limit, offset uint64) *proto.MethodListRequest {
-	return &proto.MethodListRequest{
+func makeDescribeReq(id uint64) *proto.DescribeRequest {
+	return &proto.DescribeRequest{
+		Id: id,
+	}
+}
+
+func makeListReq(limit, offset uint64) *proto.ListRequest {
+	return &proto.ListRequest{
 		Limit:  limit,
 		Offset: offset,
 	}

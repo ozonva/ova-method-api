@@ -19,10 +19,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OvaMethodApiClient interface {
-	Create(ctx context.Context, in *CreateMethodRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Remove(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Describe(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*MethodInfoResponse, error)
-	List(ctx context.Context, in *MethodListRequest, opts ...grpc.CallOption) (*MethodListResponse, error)
+	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Remove(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Describe(ctx context.Context, in *DescribeRequest, opts ...grpc.CallOption) (*DescribeResponse, error)
+	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
 }
 
 type ovaMethodApiClient struct {
@@ -33,7 +33,7 @@ func NewOvaMethodApiClient(cc grpc.ClientConnInterface) OvaMethodApiClient {
 	return &ovaMethodApiClient{cc}
 }
 
-func (c *ovaMethodApiClient) Create(ctx context.Context, in *CreateMethodRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *ovaMethodApiClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/Create", in, out, opts...)
 	if err != nil {
@@ -42,7 +42,7 @@ func (c *ovaMethodApiClient) Create(ctx context.Context, in *CreateMethodRequest
 	return out, nil
 }
 
-func (c *ovaMethodApiClient) Remove(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *ovaMethodApiClient) Remove(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/Remove", in, out, opts...)
 	if err != nil {
@@ -51,8 +51,8 @@ func (c *ovaMethodApiClient) Remove(ctx context.Context, in *MethodIdRequest, op
 	return out, nil
 }
 
-func (c *ovaMethodApiClient) Describe(ctx context.Context, in *MethodIdRequest, opts ...grpc.CallOption) (*MethodInfoResponse, error) {
-	out := new(MethodInfoResponse)
+func (c *ovaMethodApiClient) Describe(ctx context.Context, in *DescribeRequest, opts ...grpc.CallOption) (*DescribeResponse, error) {
+	out := new(DescribeResponse)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/Describe", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -60,8 +60,8 @@ func (c *ovaMethodApiClient) Describe(ctx context.Context, in *MethodIdRequest, 
 	return out, nil
 }
 
-func (c *ovaMethodApiClient) List(ctx context.Context, in *MethodListRequest, opts ...grpc.CallOption) (*MethodListResponse, error) {
-	out := new(MethodListResponse)
+func (c *ovaMethodApiClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error) {
+	out := new(ListResponse)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/List", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -73,10 +73,10 @@ func (c *ovaMethodApiClient) List(ctx context.Context, in *MethodListRequest, op
 // All implementations must embed UnimplementedOvaMethodApiServer
 // for forward compatibility
 type OvaMethodApiServer interface {
-	Create(context.Context, *CreateMethodRequest) (*emptypb.Empty, error)
-	Remove(context.Context, *MethodIdRequest) (*emptypb.Empty, error)
-	Describe(context.Context, *MethodIdRequest) (*MethodInfoResponse, error)
-	List(context.Context, *MethodListRequest) (*MethodListResponse, error)
+	Create(context.Context, *CreateRequest) (*emptypb.Empty, error)
+	Remove(context.Context, *RemoveRequest) (*emptypb.Empty, error)
+	Describe(context.Context, *DescribeRequest) (*DescribeResponse, error)
+	List(context.Context, *ListRequest) (*ListResponse, error)
 	mustEmbedUnimplementedOvaMethodApiServer()
 }
 
@@ -84,16 +84,16 @@ type OvaMethodApiServer interface {
 type UnimplementedOvaMethodApiServer struct {
 }
 
-func (UnimplementedOvaMethodApiServer) Create(context.Context, *CreateMethodRequest) (*emptypb.Empty, error) {
+func (UnimplementedOvaMethodApiServer) Create(context.Context, *CreateRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedOvaMethodApiServer) Remove(context.Context, *MethodIdRequest) (*emptypb.Empty, error) {
+func (UnimplementedOvaMethodApiServer) Remove(context.Context, *RemoveRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Remove not implemented")
 }
-func (UnimplementedOvaMethodApiServer) Describe(context.Context, *MethodIdRequest) (*MethodInfoResponse, error) {
+func (UnimplementedOvaMethodApiServer) Describe(context.Context, *DescribeRequest) (*DescribeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Describe not implemented")
 }
-func (UnimplementedOvaMethodApiServer) List(context.Context, *MethodListRequest) (*MethodListResponse, error) {
+func (UnimplementedOvaMethodApiServer) List(context.Context, *ListRequest) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedOvaMethodApiServer) mustEmbedUnimplementedOvaMethodApiServer() {}
@@ -110,7 +110,7 @@ func RegisterOvaMethodApiServer(s grpc.ServiceRegistrar, srv OvaMethodApiServer)
 }
 
 func _OvaMethodApi_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateMethodRequest)
+	in := new(CreateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -122,13 +122,13 @@ func _OvaMethodApi_Create_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: "/ova.method.api.OvaMethodApi/Create",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OvaMethodApiServer).Create(ctx, req.(*CreateMethodRequest))
+		return srv.(OvaMethodApiServer).Create(ctx, req.(*CreateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _OvaMethodApi_Remove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MethodIdRequest)
+	in := new(RemoveRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -140,13 +140,13 @@ func _OvaMethodApi_Remove_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: "/ova.method.api.OvaMethodApi/Remove",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OvaMethodApiServer).Remove(ctx, req.(*MethodIdRequest))
+		return srv.(OvaMethodApiServer).Remove(ctx, req.(*RemoveRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _OvaMethodApi_Describe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MethodIdRequest)
+	in := new(DescribeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -158,13 +158,13 @@ func _OvaMethodApi_Describe_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: "/ova.method.api.OvaMethodApi/Describe",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OvaMethodApiServer).Describe(ctx, req.(*MethodIdRequest))
+		return srv.(OvaMethodApiServer).Describe(ctx, req.(*DescribeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _OvaMethodApi_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MethodListRequest)
+	in := new(ListRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func _OvaMethodApi_List_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: "/ova.method.api.OvaMethodApi/List",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OvaMethodApiServer).List(ctx, req.(*MethodListRequest))
+		return srv.(OvaMethodApiServer).List(ctx, req.(*ListRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

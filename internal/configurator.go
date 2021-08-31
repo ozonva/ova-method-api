@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 )
 
 type Application struct {
@@ -24,9 +25,18 @@ type databaseConfig struct {
 	Pass   string
 	Db     string
 
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime int
+	MaxOpenConns       int
+	MaxIdleConns       int
+	ConnTimeoutMs      int
+	ConnMaxLifetimeSec int
+}
+
+func (dc *databaseConfig) GetConnTimeout() time.Duration {
+	return time.Duration(dc.ConnTimeoutMs) * time.Millisecond
+}
+
+func (dc *databaseConfig) GetConnMaxLifetime() time.Duration {
+	return time.Duration(dc.ConnMaxLifetimeSec) * time.Second
 }
 
 func (dc *databaseConfig) String() string {
