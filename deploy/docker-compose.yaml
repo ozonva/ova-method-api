@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  db:
+    container_name: ova.db
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: $DB_NAME
+      POSTGRES_USER: $DB_USER
+      POSTGRES_PASSWORD: $DB_PASS
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./../storage/db:/var/lib/postgresql/data

@@ -1,21 +1,26 @@
 package main
 
 import (
+	"context"
 	"net"
 	"os"
 	"os/signal"
 	"time"
 
+	_ "github.com/jackc/pgx/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 
 	"ova-method-api/internal"
 	"ova-method-api/internal/app"
+	"ova-method-api/internal/repo"
 	igrpc "ova-method-api/pkg/ova-method-api"
 )
 
 var (
+	conn   *sqlx.DB
 	server *grpc.Server
 )
 
@@ -23,7 +28,9 @@ func main() {
 	initLogger()
 
 	cnf := getConfig()
-	startGrpcServer(cnf)
+	connectToDatabase(cnf)
+
+	startGrpcServer(cnf, repo.NewMethodRepo(conn))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Kill)
@@ -45,14 +52,34 @@ func getConfig() *internal.Application {
 	return internal.LoadConfig(dir)
 }
 
-func startGrpcServer(cnf *internal.Application) {
+func connectToDatabase(cnf *internal.Application) {
+	ctx, cancel := context.WithTimeout(context.Background(), cnf.Database.GetConnTimeout())
+	defer cancel()
+
+	db, err := sqlx.Open(cnf.Database.Driver, cnf.Database.String())
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed create db connection")
+	}
+
+	if err = db.PingContext(ctx); err != nil {
+		log.Fatal().Err(err).Msg("failed ping db connection")
+	}
+
+	db.SetMaxOpenConns(cnf.Database.MaxOpenConns)
+	db.SetMaxIdleConns(cnf.Database.MaxIdleConns)
+	db.SetConnMaxLifetime(cnf.Database.GetConnMaxLifetime())
+
+	conn = db
+}
+
+func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
 	listen, err := net.Listen("tcp", cnf.Grpc.Addr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create net listen")
 	}
 
 	server = grpc.NewServer()
-	igrpc.RegisterOvaMethodApiServer(server, app.NewOvaMethodApi())
+	igrpc.RegisterOvaMethodApiServer(server, app.NewOvaMethodApi(rep))
 
 	go func() {
 		log.Info().Str("addr", cnf.Grpc.Addr).Msg("GRPC server started")
@@ -65,4 +92,8 @@ func startGrpcServer(cnf *internal.Application) {
 func shutdown() {
 	server.GracefulStop()
 	log.Info().Msg("GRPC server stopped")
+
+	if err := conn.Close(); err != nil {
+		log.Fatal().Err(err).Msg("failed close db connection")
+	}
 }
