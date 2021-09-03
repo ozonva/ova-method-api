@@ -6,9 +6,18 @@ option go_package = "./;ova_method_api";
 
 package ova.method.api;
 
+message MultiCreateRequest {
+  repeated CreateRequest methods = 1;
+}
+
 message CreateRequest {
   uint64 user_id = 1;
   string value   = 2;
+}
+
+message UpdateRequest {
+  uint64 id    = 1;
+  string value = 2;
 }
 
 message RemoveRequest {
@@ -41,6 +50,8 @@ message DescribeResponse {
 
 service OvaMethodApi {
   rpc Create (CreateRequest) returns (google.protobuf.Empty) {}
+  rpc MultiCreate (MultiCreateRequest) returns (google.protobuf.Empty) {}
+  rpc Update (UpdateRequest) returns (google.protobuf.Empty) {}
   rpc Remove (RemoveRequest) returns (google.protobuf.Empty) {}
   rpc Describe (DescribeRequest) returns (DescribeResponse) {}
   rpc List (ListRequest) returns (ListResponse) {}

@@ -16,7 +16,6 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,14 +32,19 @@ const (
 )
 
 var (
-	server *grpc.Server
-	conn   *grpc.ClientConn
-	client proto.OvaMethodApiClient
+	server  *grpc.Server
+	conn    *grpc.ClientConn
+	client  proto.OvaMethodApiClient
+	service СonfigurableOvaMethodApi
 
 	ctrl = gomock.NewController(GinkgoT())
 	rep  = mock.NewMockMethodRepo(ctrl)
 
-	method     = model.Method{UserId: 1, Value: "hello"}
+	method  = model.Method{UserId: 1, Value: "hello"}
+	txProxy = func(fn func(rep repo.MethodRepo) error) error {
+		return fn(rep)
+	}
+
 	defaultCtx = context.Background()
 	defaultErr = fmt.Errorf("something went wrong")
 )
@@ -53,7 +57,8 @@ func TestOvaMethodApi(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	server = grpc.NewServer()
-	proto.RegisterOvaMethodApiServer(server, NewOvaMethodApi(rep))
+	service = NewOvaMethodApi(rep)
+	proto.RegisterOvaMethodApiServer(server, service)
 
 	go func() {
 		listen, err := net.Listen("tcp", listenAddr)
@@ -109,6 +114,96 @@ var _ = Describe("OvaMethodApi", func() {
 			rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(nil)
 
 			result, err := client.Create(defaultCtx, makeCreateReq(1, "1"))
+			Expect(err).To(BeNil())
+			Expect(result).Should(BeAssignableToTypeOf(&emptypb.Empty{}))
+		})
+	})
+
+	Describe("MultiCreate", func() {
+		DescribeTable("check error",
+			func(req *proto.MultiCreateRequest, getExpectedRes func() (*emptypb.Empty, codes.Code)) {
+				expectRes, expectCode := getExpectedRes()
+				result, err := client.MultiCreate(defaultCtx, req)
+				st, _ := status.FromError(err)
+
+				Expect(st.Code()).To(Equal(expectCode))
+				Expect(result).To(Equal(expectRes))
+			},
+			Entry("invalid value",
+				makeMultiCreateRequest(makeCreateReq(0, "1"), makeCreateReq(1, "1")),
+				func() (*emptypb.Empty, codes.Code) {
+					return nil, codes.InvalidArgument
+				}),
+			Entry("invalid user_id",
+				makeMultiCreateRequest(makeCreateReq(1, "1"), makeCreateReq(1, "")),
+				func() (*emptypb.Empty, codes.Code) {
+					return nil, codes.InvalidArgument
+				}),
+			Entry("rep error",
+				makeMultiCreateRequest(makeCreateReq(1, "1")),
+				func() (*emptypb.Empty, codes.Code) {
+					rep.EXPECT().Transaction(gomock.Any()).Do(txProxy).Return(defaultErr)
+					rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(defaultErr)
+
+					return nil, codes.Internal
+				}),
+		)
+
+		Context("with configure ova service", func() {
+			BeforeEach(func() {
+				service.SetChunkSize(0)
+			})
+			AfterEach(func() {
+				service.SetChunkSize(2)
+			})
+
+			It("failed split to chunk", func() {
+				req := makeMultiCreateRequest(makeCreateReq(1, "1"))
+				result, err := client.MultiCreate(defaultCtx, req)
+				st, _ := status.FromError(err)
+
+				var expectRes *emptypb.Empty
+				Expect(st.Code()).To(Equal(codes.Internal))
+				Expect(result).To(Equal(expectRes))
+			})
+		})
+
+		It("successful", func() {
+			rep.EXPECT().Transaction(gomock.Any()).Do(txProxy).Return(nil)
+			rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(nil)
+
+			result, err := client.MultiCreate(defaultCtx, makeMultiCreateRequest(makeCreateReq(1, "1")))
+			Expect(err).To(BeNil())
+			Expect(result).Should(BeAssignableToTypeOf(&emptypb.Empty{}))
+		})
+	})
+
+	Describe("Update", func() {
+		DescribeTable("check error",
+			func(req *proto.UpdateRequest, getExpectedRes func() (*emptypb.Empty, codes.Code)) {
+				expectRes, expectCode := getExpectedRes()
+				result, err := client.Update(defaultCtx, req)
+				st, _ := status.FromError(err)
+
+				Expect(st.Code()).To(Equal(expectCode))
+				Expect(result).To(Equal(expectRes))
+			},
+			Entry("required id field", makeUpdateReq(0, "1"), func() (*emptypb.Empty, codes.Code) {
+				return nil, codes.InvalidArgument
+			}),
+			Entry("invalid value", makeUpdateReq(1, ""), func() (*emptypb.Empty, codes.Code) {
+				return nil, codes.InvalidArgument
+			}),
+			Entry("rep error", makeUpdateReq(1, "1"), func() (*emptypb.Empty, codes.Code) {
+				rep.EXPECT().Update(uint64(1), "1").Return(defaultErr)
+				return nil, codes.Internal
+			}),
+		)
+
+		It("successful", func() {
+			rep.EXPECT().Update(uint64(1), "1").Return(nil)
+
+			result, err := client.Update(defaultCtx, makeUpdateReq(1, "1"))
 			Expect(err).To(BeNil())
 			Expect(result).Should(BeAssignableToTypeOf(&emptypb.Empty{}))
 		})
@@ -239,6 +334,17 @@ func makeCreateReq(userId uint64, value string) *proto.CreateRequest {
 	return &proto.CreateRequest{
 		UserId: userId,
 		Value:  value,
+	}
+}
+
+func makeMultiCreateRequest(items ...*proto.CreateRequest) *proto.MultiCreateRequest {
+	return &proto.MultiCreateRequest{Methods: items}
+}
+
+func makeUpdateReq(id uint64, value string) *proto.UpdateRequest {
+	return &proto.UpdateRequest{
+		Id:    id,
+		Value: value,
 	}
 }
 

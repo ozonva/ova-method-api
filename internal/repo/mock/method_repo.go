@@ -6,6 +6,7 @@ package mock
 
 import (
 	model "ova-method-api/internal/model"
+	repo "ova-method-api/internal/repo"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -90,4 +91,32 @@ func (m *MockMethodRepo) Remove(id uint64) error {
 func (mr *MockMethodRepoMockRecorder) Remove(id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockMethodRepo)(nil).Remove), id)
+}
+
+// Transaction mocks base method.
+func (m *MockMethodRepo) Transaction(fn func(repo.MethodRepo) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Transaction", fn)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Transaction indicates an expected call of Transaction.
+func (mr *MockMethodRepoMockRecorder) Transaction(fn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transaction", reflect.TypeOf((*MockMethodRepo)(nil).Transaction), fn)
+}
+
+// Update mocks base method.
+func (m *MockMethodRepo) Update(id uint64, value string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", id, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockMethodRepoMockRecorder) Update(id, value interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMethodRepo)(nil).Update), id, value)
 }

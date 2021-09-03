@@ -20,6 +20,8 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OvaMethodApiClient interface {
 	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	MultiCreate(ctx context.Context, in *MultiCreateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Remove(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Describe(ctx context.Context, in *DescribeRequest, opts ...grpc.CallOption) (*DescribeResponse, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
@@ -36,6 +38,24 @@ func NewOvaMethodApiClient(cc grpc.ClientConnInterface) OvaMethodApiClient {
 func (c *ovaMethodApiClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/Create", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ovaMethodApiClient) MultiCreate(ctx context.Context, in *MultiCreateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/MultiCreate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ovaMethodApiClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/ova.method.api.OvaMethodApi/Update", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +94,8 @@ func (c *ovaMethodApiClient) List(ctx context.Context, in *ListRequest, opts ...
 // for forward compatibility
 type OvaMethodApiServer interface {
 	Create(context.Context, *CreateRequest) (*emptypb.Empty, error)
+	MultiCreate(context.Context, *MultiCreateRequest) (*emptypb.Empty, error)
+	Update(context.Context, *UpdateRequest) (*emptypb.Empty, error)
 	Remove(context.Context, *RemoveRequest) (*emptypb.Empty, error)
 	Describe(context.Context, *DescribeRequest) (*DescribeResponse, error)
 	List(context.Context, *ListRequest) (*ListResponse, error)
@@ -86,6 +108,12 @@ type UnimplementedOvaMethodApiServer struct {
 
 func (UnimplementedOvaMethodApiServer) Create(context.Context, *CreateRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
+func (UnimplementedOvaMethodApiServer) MultiCreate(context.Context, *MultiCreateRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MultiCreate not implemented")
+}
+func (UnimplementedOvaMethodApiServer) Update(context.Context, *UpdateRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedOvaMethodApiServer) Remove(context.Context, *RemoveRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Remove not implemented")
@@ -123,6 +151,42 @@ func _OvaMethodApi_Create_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OvaMethodApiServer).Create(ctx, req.(*CreateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OvaMethodApi_MultiCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MultiCreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OvaMethodApiServer).MultiCreate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ova.method.api.OvaMethodApi/MultiCreate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OvaMethodApiServer).MultiCreate(ctx, req.(*MultiCreateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OvaMethodApi_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OvaMethodApiServer).Update(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ova.method.api.OvaMethodApi/Update",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OvaMethodApiServer).Update(ctx, req.(*UpdateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -191,6 +255,14 @@ var OvaMethodApi_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Create",
 			Handler:    _OvaMethodApi_Create_Handler,
+		},
+		{
+			MethodName: "MultiCreate",
+			Handler:    _OvaMethodApi_MultiCreate_Handler,
+		},
+		{
+			MethodName: "Update",
+			Handler:    _OvaMethodApi_Update_Handler,
 		},
 		{
 			MethodName: "Remove",
