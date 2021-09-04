@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/Shopify/sarama"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog"
@@ -27,6 +28,7 @@ import (
 	"ova-method-api/internal/app"
 	"ova-method-api/internal/app/middleware"
 	"ova-method-api/internal/monitoring"
+	iqueue "ova-method-api/internal/queue"
 	"ova-method-api/internal/repo"
 	igrpc "ova-method-api/pkg/ova-method-api"
 )
@@ -34,6 +36,7 @@ import (
 var (
 	conn          *sqlx.DB
 	tracingCloser io.Closer
+	queue         iqueue.Queue
 	httpServer    *http.Server
 	grpcServer    *grpc.Server
 )
@@ -43,6 +46,8 @@ func main() {
 
 	initLogger()
 	initOpentracing(cnf)
+
+	connectToQueue(cnf)
 	connectToDatabase(cnf)
 
 	startHttpServer(cnf)
@@ -88,6 +93,17 @@ func initOpentracing(cnf *internal.Application) {
 
 	tracingCloser = closer
 	opentracing.SetGlobalTracer(tracer)
+}
+
+func connectToQueue(cnf *internal.Application) {
+	saramaCnf := sarama.NewConfig()
+	saramaCnf.Producer.Return.Successes = true
+
+	queue = iqueue.NewKafkaProvider(cnf.Kafka.Brokers, saramaCnf)
+
+	if err := queue.Connect(); err != nil {
+		log.Fatal().Err(err).Msg("failed connect to queue")
+	}
 }
 
 func connectToDatabase(cnf *internal.Application) {
@@ -149,7 +165,7 @@ func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
 		grpc.ChainUnaryInterceptor(tracing.UnaryIntercept, statusMonitoring.UnaryIntercept),
 	)
 
-	igrpc.RegisterOvaMethodApiServer(grpcServer, app.NewOvaMethodApi(rep))
+	igrpc.RegisterOvaMethodApiServer(grpcServer, app.NewOvaMethodApi(rep, queue))
 
 	go func() {
 		log.Info().Str("addr", cnf.Grpc.Addr).Msg("GRPC server started")
@@ -174,5 +190,9 @@ func shutdown(ctx context.Context) {
 
 	if err := tracingCloser.Close(); err != nil {
 		log.Fatal().Err(err).Msg("failed close opentracing")
+	}
+
+	if err := queue.Close(); err != nil {
+		log.Fatal().Err(err).Msg("failed close connect to queue")
 	}
 }

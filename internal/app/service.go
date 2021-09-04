@@ -13,6 +13,7 @@ import (
 
 	"ova-method-api/internal"
 	"ova-method-api/internal/model"
+	iqueue "ova-method-api/internal/queue"
 	"ova-method-api/internal/repo"
 	igrpc "ova-method-api/pkg/ova-method-api"
 )
@@ -21,6 +22,7 @@ var (
 	RequiredIdValidationErr = fmt.Errorf("id is required field")
 	EmptyValueValidationErr = fmt.Errorf("value cannot be empty")
 
+	notFoundGrpcErr = status.Errorf(codes.NotFound, "not found")
 	internalGrpcErr = status.Errorf(codes.Internal, "failed to process request")
 )
 
@@ -36,13 +38,14 @@ type СonfigurableOvaMethodApi interface {
 
 type OvaMethodApi struct {
 	rep       repo.MethodRepo
+	queue     iqueue.Queue
 	chunkSize int
 
 	igrpc.UnimplementedOvaMethodApiServer
 }
 
-func NewOvaMethodApi(rep repo.MethodRepo) СonfigurableOvaMethodApi {
-	return &OvaMethodApi{rep: rep, chunkSize: chunkSizeToSave}
+func NewOvaMethodApi(rep repo.MethodRepo, queue iqueue.Queue) СonfigurableOvaMethodApi {
+	return &OvaMethodApi{rep: rep, queue: queue, chunkSize: chunkSizeToSave}
 }
 
 func (api *OvaMethodApi) SetChunkSize(chunkSize int) {
@@ -54,7 +57,7 @@ func (api *OvaMethodApi) Create(ctx context.Context, req *igrpc.CreateRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	err := api.rep.Add([]model.Method{api.makeMethodModelFromReq(req)})
+	methods, err := api.rep.Add([]model.Method{api.makeMethodModelFromReq(req)})
 	if err != nil {
 		log.Error().
 			Uint64("user_id", req.UserId).
@@ -63,6 +66,10 @@ func (api *OvaMethodApi) Create(ctx context.Context, req *igrpc.CreateRequest) (
 			Msg("failed create method")
 
 		return nil, internalGrpcErr
+	}
+
+	for _, method := range methods {
+		api.sendEventMsg("created", method.Id)
 	}
 
 	return &emptypb.Empty{}, nil
@@ -106,16 +113,19 @@ func (api *OvaMethodApi) MultiCreate(ctx context.Context, req *igrpc.MultiCreate
 		return nil, internalGrpcErr
 	}
 
+	createdMethods := make([]model.Method, 0, len(models))
 	err = api.rep.Transaction(func(rep repo.MethodRepo) error {
-		for _, methods := range chunkedMethods {
+		for _, chunk := range chunkedMethods {
 			trSpan, _ := tracer.StartSpanFromContext(ctx, "chunk")
-			trSpan.LogKV("chunk-size", len(methods))
+			trSpan.LogKV("chunk-size", len(chunk))
 
-			if err = api.rep.Add(methods); err != nil {
+			methods, err := api.rep.Add(chunk)
+			if err != nil {
 				trSpan.Finish()
 				return err
 			}
 
+			createdMethods = append(createdMethods, methods...)
 			trSpan.Finish()
 		}
 		return nil
@@ -124,6 +134,10 @@ func (api *OvaMethodApi) MultiCreate(ctx context.Context, req *igrpc.MultiCreate
 	if err != nil {
 		log.Error().Err(err).Msg("failed multi create")
 		return nil, internalGrpcErr
+	}
+
+	for _, method := range createdMethods {
+		api.sendEventMsg("created", method.Id)
 	}
 
 	return &emptypb.Empty{}, nil
@@ -143,7 +157,11 @@ func (api *OvaMethodApi) Update(ctx context.Context, req *igrpc.UpdateRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	if err := api.rep.Update(req.Id, req.Value); err != nil {
+	err := api.rep.Update(req.Id, req.Value)
+	if err == repo.ErrNoRowAffected {
+		return nil, notFoundGrpcErr
+	}
+	if err != nil {
 		log.Error().
 			Uint64("id", req.Id).
 			Str("value", req.Value).
@@ -152,6 +170,8 @@ func (api *OvaMethodApi) Update(ctx context.Context, req *igrpc.UpdateRequest) (
 
 		return nil, internalGrpcErr
 	}
+
+	api.sendEventMsg("updated", req.Id)
 
 	return &emptypb.Empty{}, nil
 }
@@ -171,7 +191,11 @@ func (api *OvaMethodApi) Remove(ctx context.Context, req *igrpc.RemoveRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	if err := api.rep.Remove(req.Id); err != nil {
+	err := api.rep.Remove(req.Id)
+	if err == repo.ErrNoRowAffected {
+		return nil, notFoundGrpcErr
+	}
+	if err != nil {
 		log.Error().
 			Uint64("id", req.Id).
 			Err(err).
@@ -179,6 +203,8 @@ func (api *OvaMethodApi) Remove(ctx context.Context, req *igrpc.RemoveRequest) (
 
 		return nil, internalGrpcErr
 	}
+
+	api.sendEventMsg("deleted", req.Id)
 
 	return &emptypb.Empty{}, nil
 }
@@ -255,4 +281,14 @@ func (api *OvaMethodApi) validateListRequest(req *igrpc.ListRequest) error {
 		return fmt.Errorf("incorrect limit value")
 	}
 	return nil
+}
+
+func (api *OvaMethodApi) sendEventMsg(action string, methodId uint64) {
+	err := api.queue.Send("ova-method", iqueue.NewMessage(action, iqueue.Body{
+		"id": methodId,
+	}))
+
+	if err != nil {
+		log.Error().Err(err).Msg("failed send message to queue")
+	}
 }

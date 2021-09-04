@@ -20,6 +20,7 @@
         "grpcStatus": "OK",
         "grpcEndpoints": [
           "/ova.method.api.OvaMethodApi/Create",
+          "/ova.method.api.OvaMethodApi/MultiCreate",
           "/ova.method.api.OvaMethodApi/Update",
           "/ova.method.api.OvaMethodApi/Remove"
         ]
@@ -33,6 +34,12 @@
 
   "grpc": {
     "addr": "localhost:3000"
+  },
+
+  "kafka": {
+    "brokers": [
+      "localhost:9092"
+    ]
   },
 
   "database": {

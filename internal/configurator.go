@@ -15,6 +15,7 @@ type Application struct {
 	Monitoring monitoringConfig
 	Http       httpConfig
 	Grpc       grpcConfig
+	Kafka      kafkaConfig
 	Database   databaseConfig
 }
 
@@ -48,6 +49,10 @@ type httpConfig struct {
 
 type grpcConfig struct {
 	Addr string
+}
+
+type kafkaConfig struct {
+	Brokers []string
 }
 
 type databaseConfig struct {

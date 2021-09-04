@@ -10,11 +10,9 @@ import (
 
 type Connection interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
-
 	NamedExec(query string, args interface{}) (sql.Result, error)
-
+	NamedQuery(query string, args interface{}) (*sqlx.Rows, error)
 	Select(dest interface{}, query string, args ...interface{}) error
-
 	Get(dest interface{}, query string, args ...interface{}) error
 }
 
