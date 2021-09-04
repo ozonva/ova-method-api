@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -13,21 +14,28 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 
+	"github.com/opentracing/opentracing-go"
+	"github.com/uber/jaeger-client-go"
+	"github.com/uber/jaeger-client-go/config"
+
 	"ova-method-api/internal"
 	"ova-method-api/internal/app"
+	"ova-method-api/internal/app/middleware"
 	"ova-method-api/internal/repo"
 	igrpc "ova-method-api/pkg/ova-method-api"
 )
 
 var (
-	conn   *sqlx.DB
-	server *grpc.Server
+	conn          *sqlx.DB
+	server        *grpc.Server
+	tracingCloser io.Closer
 )
 
 func main() {
-	initLogger()
-
 	cnf := getConfig()
+
+	initLogger()
+	initOpentracing(cnf)
 	connectToDatabase(cnf)
 
 	startGrpcServer(cnf, repo.NewMethodRepo(conn))
@@ -40,16 +48,35 @@ func main() {
 	shutdown()
 }
 
-func initLogger() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339})
-}
-
 func getConfig() *internal.Application {
 	dir, err := os.Getwd()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed load config")
 	}
 	return internal.LoadConfig(dir)
+}
+
+func initLogger() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339})
+}
+
+func initOpentracing(cnf *internal.Application) {
+	cfg := &config.Configuration{
+		ServiceName: cnf.Tracing.ServiceName,
+		Disabled:    cnf.Tracing.Disabled,
+		Sampler: &config.SamplerConfig{
+			Type:  jaeger.SamplerTypeConst,
+			Param: 1,
+		},
+	}
+
+	tracer, closer, err := cfg.NewTracer(config.Logger(jaeger.StdLogger))
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed init tracer")
+	}
+
+	tracingCloser = closer
+	opentracing.SetGlobalTracer(tracer)
 }
 
 func connectToDatabase(cnf *internal.Application) {
@@ -78,7 +105,9 @@ func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
 		log.Fatal().Err(err).Msg("failed create net listen")
 	}
 
-	server = grpc.NewServer()
+	tracing := middleware.NewTracingMiddleware(cnf.Tracing.GrpcEndpoints)
+	server = grpc.NewServer(grpc.ChainUnaryInterceptor(tracing.UnaryIntercept))
+
 	igrpc.RegisterOvaMethodApiServer(server, app.NewOvaMethodApi(rep))
 
 	go func() {
@@ -95,5 +124,9 @@ func shutdown() {
 
 	if err := conn.Close(); err != nil {
 		log.Fatal().Err(err).Msg("failed close db connection")
+	}
+
+	if err := tracingCloser.Close(); err != nil {
+		log.Fatal().Err(err).Msg("failed close opentracing")
 	}
 }

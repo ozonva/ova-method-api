@@ -13,3 +13,11 @@ services:
       - "5432:5432"
     volumes:
       - ./../storage/db:/var/lib/postgresql/data
+
+  jaegert:
+    container_name: ova.jaegert
+    image: jaegertracing/all-in-one:latest
+    restart: always
+    ports:
+      - "16686:16686"
+      - "6831:6831/udp"

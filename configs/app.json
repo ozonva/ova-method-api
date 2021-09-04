@@ -1,6 +1,15 @@
 {
   "version": "1.0.0",
 
+  "tracing": {
+    "serviceName": "OvaMethodApi",
+    "disabled": false,
+
+    "grpcEndpoints": {
+      "/ova.method.api.OvaMethodApi/MultiCreate": "OvaMethodApi/MultiCreate"
+    }
+  },
+
   "grpc": {
     "addr": "localhost:3000"
   },
@@ -13,10 +22,10 @@
     "pass": "123456",
     "db": "ova",
 
-    "MaxOpenConns": 2,
-    "MaxIdleConns": 1,
+    "maxOpenConns": 2,
+    "maxIdleConns": 1,
 
-    "ConnTimeoutMs": 300,
-    "ConnMaxLifetimeSec": 300
+    "connTimeoutMs": 300,
+    "connMaxLifetimeSec": 300
   }
 }

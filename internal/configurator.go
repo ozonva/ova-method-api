@@ -9,8 +9,16 @@ import (
 
 type Application struct {
 	Version  string
+	Tracing  tracingConfig
 	Grpc     grpcConfig
 	Database databaseConfig
+}
+
+type tracingConfig struct {
+	Disabled    bool
+	ServiceName string
+
+	GrpcEndpoints map[string]string
 }
 
 type grpcConfig struct {

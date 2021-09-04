@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	tracer "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
@@ -107,15 +108,21 @@ func (api *OvaMethodApi) MultiCreate(ctx context.Context, req *igrpc.MultiCreate
 
 	err = api.rep.Transaction(func(rep repo.MethodRepo) error {
 		for _, methods := range chunkedMethods {
+			trSpan, _ := tracer.StartSpanFromContext(ctx, "chunk")
+			trSpan.LogKV("chunk-size", len(methods))
+
 			if err = api.rep.Add(methods); err != nil {
+				trSpan.Finish()
 				return err
 			}
+
+			trSpan.Finish()
 		}
 		return nil
 	})
 
 	if err != nil {
-		log.Error().Err(err).Msg("failed multi add")
+		log.Error().Err(err).Msg("failed multi create")
 		return nil, internalGrpcErr
 	}
 
