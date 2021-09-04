@@ -15,27 +15,27 @@ func NewTracingMiddleware(allowMethods map[string]string) *tracingMiddleware {
 	return &tracingMiddleware{allowMethods: allowMethods}
 }
 
-func (tm *tracingMiddleware) UnaryIntercept(
+func (middleware *tracingMiddleware) UnaryIntercept(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	if !tm.allowTracing(info.FullMethod) {
+	if !middleware.allowTracing(info.FullMethod) {
 		return handler(ctx, req)
 	}
 
-	parentSpan, ctx := tracer.StartSpanFromContext(ctx, tm.getAliasByMethod(info.FullMethod))
+	parentSpan, ctx := tracer.StartSpanFromContext(ctx, middleware.getAliasByMethod(info.FullMethod))
 	defer parentSpan.Finish()
 
 	return handler(ctx, req)
 }
 
-func (tm *tracingMiddleware) allowTracing(methodName string) bool {
-	_, ok := tm.allowMethods[methodName]
+func (middleware *tracingMiddleware) allowTracing(methodName string) bool {
+	_, ok := middleware.allowMethods[methodName]
 	return ok
 }
 
-func (tm *tracingMiddleware) getAliasByMethod(methodName string) string {
-	return tm.allowMethods[methodName]
+func (middleware *tracingMiddleware) getAliasByMethod(methodName string) string {
+	return middleware.allowMethods[methodName]
 }

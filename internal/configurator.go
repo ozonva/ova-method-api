@@ -8,10 +8,18 @@ import (
 )
 
 type Application struct {
-	Version  string
-	Tracing  tracingConfig
-	Grpc     grpcConfig
-	Database databaseConfig
+	Version     string
+	ShutdownSec int
+
+	Tracing    tracingConfig
+	Monitoring monitoringConfig
+	Http       httpConfig
+	Grpc       grpcConfig
+	Database   databaseConfig
+}
+
+func (app *Application) GetShutdownTime() time.Duration {
+	return time.Duration(app.ShutdownSec) * time.Second
 }
 
 type tracingConfig struct {
@@ -19,6 +27,23 @@ type tracingConfig struct {
 	ServiceName string
 
 	GrpcEndpoints map[string]string
+}
+
+type monitoringConfig struct {
+	HttpRoute      string
+	StatusCounters []monitoringCounterConfig
+}
+
+type monitoringCounterConfig struct {
+	Name string
+	Desc string
+
+	GrpcStatus    string
+	GrpcEndpoints []string
+}
+
+type httpConfig struct {
+	Addr string
 }
 
 type grpcConfig struct {

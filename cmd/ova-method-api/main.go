@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
@@ -18,17 +19,23 @@ import (
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"ova-method-api/internal"
 	"ova-method-api/internal/app"
 	"ova-method-api/internal/app/middleware"
+	"ova-method-api/internal/monitoring"
 	"ova-method-api/internal/repo"
 	igrpc "ova-method-api/pkg/ova-method-api"
 )
 
 var (
 	conn          *sqlx.DB
-	server        *grpc.Server
 	tracingCloser io.Closer
+	httpServer    *http.Server
+	grpcServer    *grpc.Server
 )
 
 func main() {
@@ -38,6 +45,7 @@ func main() {
 	initOpentracing(cnf)
 	connectToDatabase(cnf)
 
+	startHttpServer(cnf)
 	startGrpcServer(cnf, repo.NewMethodRepo(conn))
 
 	quit := make(chan os.Signal, 1)
@@ -45,7 +53,10 @@ func main() {
 	defer signal.Stop(quit)
 	<-quit
 
-	shutdown()
+	ctx, cancel := context.WithTimeout(context.Background(), cnf.GetShutdownTime())
+	defer cancel()
+
+	shutdown(ctx)
 }
 
 func getConfig() *internal.Application {
@@ -99,32 +110,67 @@ func connectToDatabase(cnf *internal.Application) {
 	conn = db
 }
 
+func startHttpServer(cnf *internal.Application) {
+	router := http.NewServeMux()
+	router.Handle(cnf.Monitoring.HttpRoute, promhttp.Handler())
+
+	httpServer = &http.Server{Addr: cnf.Http.Addr, Handler: router}
+
+	go func() {
+		log.Info().Str("addr", cnf.Http.Addr).Msg("HTTP server started")
+		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("failed start HTTP server")
+		}
+	}()
+}
+
 func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
 	listen, err := net.Listen("tcp", cnf.Grpc.Addr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create net listen")
 	}
 
-	tracing := middleware.NewTracingMiddleware(cnf.Tracing.GrpcEndpoints)
-	server = grpc.NewServer(grpc.ChainUnaryInterceptor(tracing.UnaryIntercept))
+	statusCounters := make([]monitoring.StatusCounter, 0, len(cnf.Monitoring.StatusCounters))
+	for _, counter := range cnf.Monitoring.StatusCounters {
+		statusCounters = append(statusCounters, monitoring.NewStatusCounter(
+			counter.GrpcStatus,
+			counter.GrpcEndpoints,
+			promauto.NewCounter(prometheus.CounterOpts{
+				Name: counter.Name,
+				Help: counter.Desc,
+			}),
+		))
+	}
 
-	igrpc.RegisterOvaMethodApiServer(server, app.NewOvaMethodApi(rep))
+	tracing := middleware.NewTracingMiddleware(cnf.Tracing.GrpcEndpoints)
+	statusMonitoring := middleware.NewStatusMonitoringMiddleware(statusCounters)
+
+	grpcServer = grpc.NewServer(
+		grpc.ChainUnaryInterceptor(tracing.UnaryIntercept, statusMonitoring.UnaryIntercept),
+	)
+
+	igrpc.RegisterOvaMethodApiServer(grpcServer, app.NewOvaMethodApi(rep))
 
 	go func() {
 		log.Info().Str("addr", cnf.Grpc.Addr).Msg("GRPC server started")
-		if err = server.Serve(listen); err != nil {
-			log.Fatal().Err(err).Msg("failed start grpc server")
+		if err = grpcServer.Serve(listen); err != nil {
+			log.Fatal().Err(err).Msg("failed start GRPC server")
 		}
 	}()
 }
 
-func shutdown() {
-	server.GracefulStop()
+func shutdown(ctx context.Context) {
+	grpcServer.GracefulStop()
 	log.Info().Msg("GRPC server stopped")
 
 	if err := conn.Close(); err != nil {
 		log.Fatal().Err(err).Msg("failed close db connection")
 	}
+
+	if err := httpServer.Shutdown(ctx); err != nil {
+		log.Fatal().Err(err).Msg("failed shutdown http server")
+	}
+	log.Info().Msg("HTTP server stopped")
 
 	if err := tracingCloser.Close(); err != nil {
 		log.Fatal().Err(err).Msg("failed close opentracing")

@@ -1,5 +1,6 @@
 {
   "version": "1.0.0",
+  "shutdownSec": 4,
 
   "tracing": {
     "serviceName": "OvaMethodApi",
@@ -8,6 +9,26 @@
     "grpcEndpoints": {
       "/ova.method.api.OvaMethodApi/MultiCreate": "OvaMethodApi/MultiCreate"
     }
+  },
+
+  "monitoring": {
+    "httpRoute": "/metrics",
+    "statusCounters": [
+      {
+        "name": "status_ok",
+        "desc": "number of successful requests",
+        "grpcStatus": "OK",
+        "grpcEndpoints": [
+          "/ova.method.api.OvaMethodApi/Create",
+          "/ova.method.api.OvaMethodApi/Update",
+          "/ova.method.api.OvaMethodApi/Remove"
+        ]
+      }
+    ]
+  },
+
+  "http": {
+    "addr": "localhost:3001"
   },
 
   "grpc": {
