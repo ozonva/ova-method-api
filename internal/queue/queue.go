@@ -2,6 +2,8 @@ package queue
 
 import "encoding/json"
 
+//go:generate mockgen -source=$GOFILE -destination=./mock/queue.go -package=mock
+
 type Queue interface {
 	Connect() error
 	Close() error

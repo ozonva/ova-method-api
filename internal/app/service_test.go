@@ -16,12 +16,15 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"ova-method-api/internal/model"
+	iqueue "ova-method-api/internal/queue"
+	qmock "ova-method-api/internal/queue/mock"
 	"ova-method-api/internal/repo"
 	"ova-method-api/internal/repo/mock"
 	proto "ova-method-api/pkg/ova-method-api"
@@ -37,16 +40,18 @@ var (
 	client  proto.OvaMethodApiClient
 	service СonfigurableOvaMethodApi
 
-	ctrl = gomock.NewController(GinkgoT())
-	rep  = mock.NewMockMethodRepo(ctrl)
+	ctrl  = gomock.NewController(GinkgoT())
+	rep   = mock.NewMockMethodRepo(ctrl)
+	queue = qmock.NewMockQueue(ctrl)
 
 	method  = model.Method{UserId: 1, Value: "hello"}
 	txProxy = func(fn func(rep repo.MethodRepo) error) error {
 		return fn(rep)
 	}
 
-	defaultCtx = context.Background()
-	defaultErr = fmt.Errorf("something went wrong")
+	defaultTopic = "ova-method"
+	defaultCtx   = context.Background()
+	defaultErr   = fmt.Errorf("something went wrong")
 )
 
 func TestOvaMethodApi(t *testing.T) {
@@ -57,7 +62,7 @@ func TestOvaMethodApi(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	server = grpc.NewServer()
-	service = NewOvaMethodApi(rep)
+	service = NewOvaMethodApi(rep, queue)
 	proto.RegisterOvaMethodApiServer(server, service)
 
 	go func() {
@@ -105,13 +110,17 @@ var _ = Describe("OvaMethodApi", func() {
 				return nil, codes.InvalidArgument
 			}),
 			Entry("rep error", makeCreateReq(1, "1"), func() (*emptypb.Empty, codes.Code) {
-				rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(defaultErr)
+				rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(nil, defaultErr)
 				return nil, codes.Internal
 			}),
 		)
 
 		It("successful", func() {
-			rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(nil)
+			rep.EXPECT().
+				Add([]model.Method{{UserId: 1, Value: "1"}}).
+				Return([]model.Method{{Id: 1}}, nil)
+
+			queue.EXPECT().Send(defaultTopic, makeQueueMsg("created", 1)).Return(nil)
 
 			result, err := client.Create(defaultCtx, makeCreateReq(1, "1"))
 			Expect(err).To(BeNil())
@@ -143,7 +152,7 @@ var _ = Describe("OvaMethodApi", func() {
 				makeMultiCreateRequest(makeCreateReq(1, "1")),
 				func() (*emptypb.Empty, codes.Code) {
 					rep.EXPECT().Transaction(gomock.Any()).Do(txProxy).Return(defaultErr)
-					rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(defaultErr)
+					rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(nil, defaultErr)
 
 					return nil, codes.Internal
 				}),
@@ -170,7 +179,11 @@ var _ = Describe("OvaMethodApi", func() {
 
 		It("successful", func() {
 			rep.EXPECT().Transaction(gomock.Any()).Do(txProxy).Return(nil)
-			rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(nil)
+			rep.EXPECT().
+				Add([]model.Method{{UserId: 1, Value: "1"}}).
+				Return([]model.Method{{Id: 1}}, nil)
+
+			queue.EXPECT().Send(defaultTopic, makeQueueMsg("created", 1)).Return(nil)
 
 			result, err := client.MultiCreate(defaultCtx, makeMultiCreateRequest(makeCreateReq(1, "1")))
 			Expect(err).To(BeNil())
@@ -202,6 +215,7 @@ var _ = Describe("OvaMethodApi", func() {
 
 		It("successful", func() {
 			rep.EXPECT().Update(uint64(1), "1").Return(nil)
+			queue.EXPECT().Send(defaultTopic, makeQueueMsg("updated", 1)).Return(nil)
 
 			result, err := client.Update(defaultCtx, makeUpdateReq(1, "1"))
 			Expect(err).To(BeNil())
@@ -230,6 +244,7 @@ var _ = Describe("OvaMethodApi", func() {
 
 		It("successful", func() {
 			rep.EXPECT().Remove(uint64(1)).Return(nil)
+			queue.EXPECT().Send(defaultTopic, makeQueueMsg("deleted", 1)).Return(nil)
 
 			result, err := client.Remove(defaultCtx, makeRemoveReq(1))
 			Expect(err).To(BeNil())
@@ -365,4 +380,10 @@ func makeListReq(limit, offset uint64) *proto.ListRequest {
 		Limit:  limit,
 		Offset: offset,
 	}
+}
+
+func makeQueueMsg(action string, id uint64) iqueue.QueueMsg {
+	return iqueue.NewMessage(action, iqueue.Body{
+		"id": id,
+	})
 }

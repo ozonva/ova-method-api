@@ -41,10 +41,10 @@ var _ = Describe("Saver", func() {
 			var wg sync.WaitGroup
 
 			wg.Add(1)
-			rep.EXPECT().Add([]model.Method{method}).DoAndReturn(func(items []model.Method) error {
+			rep.EXPECT().Add([]model.Method{method}).DoAndReturn(func(items []model.Method) ([]model.Method, error) {
 				defer wg.Done()
 				success = true
-				return nil
+				return nil, nil
 			})
 
 			flushService := flusher.New(1, rep)
@@ -81,8 +81,8 @@ var _ = Describe("Saver", func() {
 	})
 
 	It("panic after retry", func() {
-		rep.EXPECT().Add([]model.Method{method}).Return(flushErr)
-		rep.EXPECT().Add([]model.Method{method}).Return(flushErr)
+		rep.EXPECT().Add([]model.Method{method}).Return(nil, flushErr)
+		rep.EXPECT().Add([]model.Method{method}).Return(nil, flushErr)
 
 		flushService := flusher.New(1, rep)
 		saverService := New(defaultCtx, 1, 1, flushService)

@@ -36,11 +36,12 @@ func (m *MockMethodRepo) EXPECT() *MockMethodRepoMockRecorder {
 }
 
 // Add mocks base method.
-func (m *MockMethodRepo) Add(items []model.Method) error {
+func (m *MockMethodRepo) Add(items []model.Method) ([]model.Method, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Add", items)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]model.Method)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Add indicates an expected call of Add.
