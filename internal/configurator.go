@@ -13,6 +13,7 @@ type Application struct {
 
 	Tracing    tracingConfig
 	Monitoring monitoringConfig
+	Logging    loggingConfig
 	Http       httpConfig
 	Grpc       grpcConfig
 	Kafka      kafkaConfig
@@ -41,6 +42,16 @@ type monitoringCounterConfig struct {
 
 	GrpcStatus    string
 	GrpcEndpoints []string
+}
+
+type loggingConfig struct {
+	Driver     string
+	Level      string
+	MaxBackups int
+	MaxSizeMb  int
+	MaxAgeDay  int
+	FileName   string
+	FilePath   string
 }
 
 type httpConfig struct {

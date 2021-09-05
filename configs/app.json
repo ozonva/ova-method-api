@@ -28,6 +28,16 @@
     ]
   },
 
+  "logging": {
+    "driver": "stdout",
+    "level": "debug",
+    "maxBackups": 3,
+    "maxSizeMb": 10,
+    "maxAgeDay": 7,
+    "fileName": "default.log",
+    "filePath": "/var/log/ova-method"
+  },
+
   "http": {
     "addr": "localhost:3001"
   },

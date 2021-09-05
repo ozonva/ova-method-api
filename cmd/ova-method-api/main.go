@@ -7,15 +7,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 
 	"github.com/Shopify/sarama"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
+	"google.golang.org/grpc"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
@@ -45,7 +48,7 @@ var (
 func main() {
 	cnf := getConfig()
 
-	initLogger()
+	initLogger(cnf)
 	initOpentracing(cnf)
 
 	connectToQueue(cnf)
@@ -73,8 +76,33 @@ func getConfig() *internal.Application {
 	return internal.LoadConfig(dir)
 }
 
-func initLogger() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339})
+func initLogger(cnf *internal.Application) {
+	var writer io.Writer
+
+	switch cnf.Logging.Driver {
+	case "file":
+		if err := os.MkdirAll(cnf.Logging.FilePath, 0744); err != nil {
+			log.Fatal().Err(err).Str("path", cnf.Logging.FilePath).Msg("failed create log directory")
+		}
+
+		writer = &lumberjack.Logger{
+			MaxSize:    cnf.Logging.MaxSizeMb,
+			MaxBackups: cnf.Logging.MaxBackups,
+			MaxAge:     cnf.Logging.MaxAgeDay,
+			Filename:   path.Join(cnf.Logging.FilePath, cnf.Logging.FileName),
+		}
+	default:
+		writer = os.Stdout
+	}
+
+	lvl, err := zerolog.ParseLevel(cnf.Logging.Level)
+	if err != nil {
+		lvl = zerolog.InfoLevel
+		log.Error().Err(err).Str("level", cnf.Logging.Level).Msg("failed parse log level")
+	}
+
+	zerolog.SetGlobalLevel(lvl)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: writer, TimeFormat: time.RFC3339})
 }
 
 func initOpentracing(cnf *internal.Application) {
