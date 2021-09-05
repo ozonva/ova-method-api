@@ -57,7 +57,7 @@ func (api *OvaMethodApi) Create(ctx context.Context, req *igrpc.CreateRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	methods, err := api.rep.Add([]model.Method{api.makeMethodModelFromReq(req)})
+	methods, err := api.rep.Add(ctx, []model.Method{api.makeMethodModelFromReq(req)})
 	if err != nil {
 		log.Error().
 			Uint64("user_id", req.UserId).
@@ -114,12 +114,12 @@ func (api *OvaMethodApi) MultiCreate(ctx context.Context, req *igrpc.MultiCreate
 	}
 
 	createdMethods := make([]model.Method, 0, len(models))
-	err = api.rep.Transaction(func(rep repo.MethodRepo) error {
+	err = api.rep.Transaction(ctx, func(rep repo.MethodRepo) error {
 		for _, chunk := range chunkedMethods {
 			trSpan, _ := tracer.StartSpanFromContext(ctx, "chunk")
 			trSpan.LogKV("chunk-size", len(chunk))
 
-			methods, err := api.rep.Add(chunk)
+			methods, err := api.rep.Add(ctx, chunk)
 			if err != nil {
 				trSpan.Finish()
 				return err
@@ -157,7 +157,7 @@ func (api *OvaMethodApi) Update(ctx context.Context, req *igrpc.UpdateRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	err := api.rep.Update(req.Id, req.Value)
+	err := api.rep.Update(ctx, req.Id, req.Value)
 	if err == repo.ErrNoRowAffected {
 		return nil, notFoundGrpcErr
 	}
@@ -191,7 +191,7 @@ func (api *OvaMethodApi) Remove(ctx context.Context, req *igrpc.RemoveRequest) (
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	err := api.rep.Remove(req.Id)
+	err := api.rep.Remove(ctx, req.Id)
 	if err == repo.ErrNoRowAffected {
 		return nil, notFoundGrpcErr
 	}
@@ -221,7 +221,7 @@ func (api *OvaMethodApi) Describe(ctx context.Context, req *igrpc.DescribeReques
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	method, err := api.rep.Describe(req.Id)
+	method, err := api.rep.Describe(ctx, req.Id)
 	if err == repo.ErrNoRows {
 		return nil, status.Errorf(codes.NotFound, "method not found")
 	}
@@ -249,7 +249,7 @@ func (api *OvaMethodApi) List(ctx context.Context, req *igrpc.ListRequest) (*igr
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	methods, err := api.rep.List(req.Limit, req.Offset)
+	methods, err := api.rep.List(ctx, req.Limit, req.Offset)
 	if err != nil && err != repo.ErrNoRows {
 		log.Error().
 			Uint64("limit", req.Limit).

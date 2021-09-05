@@ -41,11 +41,13 @@ var _ = Describe("Saver", func() {
 			var wg sync.WaitGroup
 
 			wg.Add(1)
-			rep.EXPECT().Add([]model.Method{method}).DoAndReturn(func(items []model.Method) ([]model.Method, error) {
-				defer wg.Done()
-				success = true
-				return nil, nil
-			})
+			rep.EXPECT().
+				Add(ctx, []model.Method{method}).
+				DoAndReturn(func(ctx context.Context, items []model.Method) ([]model.Method, error) {
+					defer wg.Done()
+					success = true
+					return nil, nil
+				})
 
 			flushService := flusher.New(1, rep)
 			saverService := New(ctx, 1, delay, flushService)
@@ -56,19 +58,19 @@ var _ = Describe("Saver", func() {
 			Expect(success).To(Equal(true))
 		},
 		Entry("flush after buffer full", defaultCtx, uint(10), func(ctx context.Context, s Saver) {
-			s.Save(method)
-			s.Save(method)
+			_ = s.Save(method)
+			_ = s.Save(method)
 		}),
 		Entry("flush after delay", defaultCtx, uint(1), func(ctx context.Context, s Saver) {
-			s.Save(method)
+			_ = s.Save(method)
 			time.Sleep(1100 * time.Millisecond)
 		}),
 		Entry("flush after close", defaultCtx, uint(10), func(ctx context.Context, s Saver) {
-			s.Save(method)
-			s.Close()
+			_ = s.Save(method)
+			_ = s.Close()
 		}),
 		Entry("flush after context done", cancelableCtx, uint(10), func(ctx context.Context, s Saver) {
-			s.Save(method)
+			_ = s.Save(method)
 			cancel()
 			time.Sleep(100 * time.Millisecond)
 		}),
@@ -77,17 +79,18 @@ var _ = Describe("Saver", func() {
 	It("nothing to save", func() {
 		flushService := flusher.New(1, rep)
 		saverService := New(defaultCtx, 1, 1, flushService)
-		saverService.Close()
+		_ = saverService.Close()
 	})
 
-	It("panic after retry", func() {
-		rep.EXPECT().Add([]model.Method{method}).Return(nil, flushErr)
-		rep.EXPECT().Add([]model.Method{method}).Return(nil, flushErr)
+	It("error after retry", func() {
+		rep.EXPECT().Add(defaultCtx, []model.Method{method}).Return(nil, flushErr)
+		rep.EXPECT().Add(defaultCtx, []model.Method{method}).Return(nil, flushErr)
 
 		flushService := flusher.New(1, rep)
 		saverService := New(defaultCtx, 1, 1, flushService)
 
-		saverService.Save(method)
-		Expect(saverService.Close).Should(Panic())
+		_ = saverService.Save(method)
+		err := saverService.Close()
+		Expect(err).To(Equal(ErrFlushBuffer))
 	})
 })

@@ -5,6 +5,7 @@
 package mock
 
 import (
+	context "context"
 	model "ova-method-api/internal/model"
 	repo "ova-method-api/internal/repo"
 	reflect "reflect"
@@ -36,88 +37,88 @@ func (m *MockMethodRepo) EXPECT() *MockMethodRepoMockRecorder {
 }
 
 // Add mocks base method.
-func (m *MockMethodRepo) Add(items []model.Method) ([]model.Method, error) {
+func (m *MockMethodRepo) Add(ctx context.Context, items []model.Method) ([]model.Method, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Add", items)
+	ret := m.ctrl.Call(m, "Add", ctx, items)
 	ret0, _ := ret[0].([]model.Method)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Add indicates an expected call of Add.
-func (mr *MockMethodRepoMockRecorder) Add(items interface{}) *gomock.Call {
+func (mr *MockMethodRepoMockRecorder) Add(ctx, items interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMethodRepo)(nil).Add), items)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMethodRepo)(nil).Add), ctx, items)
 }
 
 // Describe mocks base method.
-func (m *MockMethodRepo) Describe(id uint64) (*model.Method, error) {
+func (m *MockMethodRepo) Describe(ctx context.Context, id uint64) (*model.Method, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Describe", id)
+	ret := m.ctrl.Call(m, "Describe", ctx, id)
 	ret0, _ := ret[0].(*model.Method)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Describe indicates an expected call of Describe.
-func (mr *MockMethodRepoMockRecorder) Describe(id interface{}) *gomock.Call {
+func (mr *MockMethodRepoMockRecorder) Describe(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Describe", reflect.TypeOf((*MockMethodRepo)(nil).Describe), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Describe", reflect.TypeOf((*MockMethodRepo)(nil).Describe), ctx, id)
 }
 
 // List mocks base method.
-func (m *MockMethodRepo) List(limit, offset uint64) ([]model.Method, error) {
+func (m *MockMethodRepo) List(ctx context.Context, limit, offset uint64) ([]model.Method, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", limit, offset)
+	ret := m.ctrl.Call(m, "List", ctx, limit, offset)
 	ret0, _ := ret[0].([]model.Method)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockMethodRepoMockRecorder) List(limit, offset interface{}) *gomock.Call {
+func (mr *MockMethodRepoMockRecorder) List(ctx, limit, offset interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockMethodRepo)(nil).List), limit, offset)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockMethodRepo)(nil).List), ctx, limit, offset)
 }
 
 // Remove mocks base method.
-func (m *MockMethodRepo) Remove(id uint64) error {
+func (m *MockMethodRepo) Remove(ctx context.Context, id uint64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Remove", id)
+	ret := m.ctrl.Call(m, "Remove", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Remove indicates an expected call of Remove.
-func (mr *MockMethodRepoMockRecorder) Remove(id interface{}) *gomock.Call {
+func (mr *MockMethodRepoMockRecorder) Remove(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockMethodRepo)(nil).Remove), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockMethodRepo)(nil).Remove), ctx, id)
 }
 
 // Transaction mocks base method.
-func (m *MockMethodRepo) Transaction(fn func(repo.MethodRepo) error) error {
+func (m *MockMethodRepo) Transaction(ctx context.Context, fn func(repo.MethodRepo) error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Transaction", fn)
+	ret := m.ctrl.Call(m, "Transaction", ctx, fn)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Transaction indicates an expected call of Transaction.
-func (mr *MockMethodRepoMockRecorder) Transaction(fn interface{}) *gomock.Call {
+func (mr *MockMethodRepoMockRecorder) Transaction(ctx, fn interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transaction", reflect.TypeOf((*MockMethodRepo)(nil).Transaction), fn)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transaction", reflect.TypeOf((*MockMethodRepo)(nil).Transaction), ctx, fn)
 }
 
 // Update mocks base method.
-func (m *MockMethodRepo) Update(id uint64, value string) error {
+func (m *MockMethodRepo) Update(ctx context.Context, id uint64, value string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", id, value)
+	ret := m.ctrl.Call(m, "Update", ctx, id, value)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockMethodRepoMockRecorder) Update(id, value interface{}) *gomock.Call {
+func (mr *MockMethodRepoMockRecorder) Update(ctx, id, value interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMethodRepo)(nil).Update), id, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMethodRepo)(nil).Update), ctx, id, value)
 }

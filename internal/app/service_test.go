@@ -45,7 +45,7 @@ var (
 	queue = qmock.NewMockQueue(ctrl)
 
 	method  = model.Method{UserId: 1, Value: "hello"}
-	txProxy = func(fn func(rep repo.MethodRepo) error) error {
+	txProxy = func(ctx context.Context, fn func(rep repo.MethodRepo) error) error {
 		return fn(rep)
 	}
 
@@ -110,14 +110,14 @@ var _ = Describe("OvaMethodApi", func() {
 				return nil, codes.InvalidArgument
 			}),
 			Entry("rep error", makeCreateReq(1, "1"), func() (*emptypb.Empty, codes.Code) {
-				rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(nil, defaultErr)
+				rep.EXPECT().Add(gomock.Any(), []model.Method{{UserId: 1, Value: "1"}}).Return(nil, defaultErr)
 				return nil, codes.Internal
 			}),
 		)
 
 		It("successful", func() {
 			rep.EXPECT().
-				Add([]model.Method{{UserId: 1, Value: "1"}}).
+				Add(gomock.Any(), []model.Method{{UserId: 1, Value: "1"}}).
 				Return([]model.Method{{Id: 1}}, nil)
 
 			queue.EXPECT().Send(defaultTopic, makeQueueMsg("created", 1)).Return(nil)
@@ -151,8 +151,8 @@ var _ = Describe("OvaMethodApi", func() {
 			Entry("rep error",
 				makeMultiCreateRequest(makeCreateReq(1, "1")),
 				func() (*emptypb.Empty, codes.Code) {
-					rep.EXPECT().Transaction(gomock.Any()).Do(txProxy).Return(defaultErr)
-					rep.EXPECT().Add([]model.Method{{UserId: 1, Value: "1"}}).Return(nil, defaultErr)
+					rep.EXPECT().Transaction(gomock.Any(), gomock.Any()).Do(txProxy).Return(defaultErr)
+					rep.EXPECT().Add(gomock.Any(), []model.Method{{UserId: 1, Value: "1"}}).Return(nil, defaultErr)
 
 					return nil, codes.Internal
 				}),
@@ -178,9 +178,9 @@ var _ = Describe("OvaMethodApi", func() {
 		})
 
 		It("successful", func() {
-			rep.EXPECT().Transaction(gomock.Any()).Do(txProxy).Return(nil)
+			rep.EXPECT().Transaction(gomock.Any(), gomock.Any()).Do(txProxy).Return(nil)
 			rep.EXPECT().
-				Add([]model.Method{{UserId: 1, Value: "1"}}).
+				Add(gomock.Any(), []model.Method{{UserId: 1, Value: "1"}}).
 				Return([]model.Method{{Id: 1}}, nil)
 
 			queue.EXPECT().Send(defaultTopic, makeQueueMsg("created", 1)).Return(nil)
@@ -208,13 +208,13 @@ var _ = Describe("OvaMethodApi", func() {
 				return nil, codes.InvalidArgument
 			}),
 			Entry("rep error", makeUpdateReq(1, "1"), func() (*emptypb.Empty, codes.Code) {
-				rep.EXPECT().Update(uint64(1), "1").Return(defaultErr)
+				rep.EXPECT().Update(gomock.Any(), uint64(1), "1").Return(defaultErr)
 				return nil, codes.Internal
 			}),
 		)
 
 		It("successful", func() {
-			rep.EXPECT().Update(uint64(1), "1").Return(nil)
+			rep.EXPECT().Update(gomock.Any(), uint64(1), "1").Return(nil)
 			queue.EXPECT().Send(defaultTopic, makeQueueMsg("updated", 1)).Return(nil)
 
 			result, err := client.Update(defaultCtx, makeUpdateReq(1, "1"))
@@ -237,13 +237,13 @@ var _ = Describe("OvaMethodApi", func() {
 				return nil, codes.InvalidArgument
 			}),
 			Entry("rep error", makeRemoveReq(1), func() (*emptypb.Empty, codes.Code) {
-				rep.EXPECT().Remove(uint64(1)).Return(defaultErr)
+				rep.EXPECT().Remove(gomock.Any(), uint64(1)).Return(defaultErr)
 				return nil, codes.Internal
 			}),
 		)
 
 		It("successful", func() {
-			rep.EXPECT().Remove(uint64(1)).Return(nil)
+			rep.EXPECT().Remove(gomock.Any(), uint64(1)).Return(nil)
 			queue.EXPECT().Send(defaultTopic, makeQueueMsg("deleted", 1)).Return(nil)
 
 			result, err := client.Remove(defaultCtx, makeRemoveReq(1))
@@ -266,17 +266,17 @@ var _ = Describe("OvaMethodApi", func() {
 				return nil, codes.InvalidArgument
 			}),
 			Entry("rep not found", makeDescribeReq(1), func() (*proto.DescribeResponse, codes.Code) {
-				rep.EXPECT().Describe(uint64(1)).Return(nil, repo.ErrNoRows)
+				rep.EXPECT().Describe(gomock.Any(), uint64(1)).Return(nil, repo.ErrNoRows)
 				return nil, codes.NotFound
 			}),
 			Entry("rep error", makeDescribeReq(1), func() (*proto.DescribeResponse, codes.Code) {
-				rep.EXPECT().Describe(uint64(1)).Return(nil, defaultErr)
+				rep.EXPECT().Describe(gomock.Any(), uint64(1)).Return(nil, defaultErr)
 				return nil, codes.Internal
 			}),
 		)
 
 		It("successful", func() {
-			rep.EXPECT().Describe(uint64(1)).Return(&method, nil)
+			rep.EXPECT().Describe(gomock.Any(), uint64(1)).Return(&method, nil)
 
 			result, err := client.Describe(defaultCtx, makeDescribeReq(1))
 			Expect(err).To(BeNil())
@@ -300,13 +300,13 @@ var _ = Describe("OvaMethodApi", func() {
 				}),
 			Entry("rep error", makeListReq(1, 0),
 				func() (*proto.ListResponse, codes.Code) {
-					rep.EXPECT().List(uint64(1), uint64(0)).Return(nil, defaultErr)
+					rep.EXPECT().List(gomock.Any(), uint64(1), uint64(0)).Return(nil, defaultErr)
 					return nil, codes.Internal
 				}),
 		)
 
 		It("rep not found", func() {
-			rep.EXPECT().List(uint64(1), uint64(0)).Return(nil, repo.ErrNoRows)
+			rep.EXPECT().List(gomock.Any(), uint64(1), uint64(0)).Return(nil, repo.ErrNoRows)
 
 			result, err := client.List(defaultCtx, makeListReq(1, 0))
 			Expect(err).To(BeNil())
@@ -314,7 +314,7 @@ var _ = Describe("OvaMethodApi", func() {
 		})
 
 		It("successful", func() {
-			rep.EXPECT().List(uint64(2), uint64(0)).Return([]model.Method{method, method}, nil)
+			rep.EXPECT().List(gomock.Any(), uint64(2), uint64(0)).Return([]model.Method{method, method}, nil)
 
 			result, err := client.List(defaultCtx, makeListReq(2, 0))
 

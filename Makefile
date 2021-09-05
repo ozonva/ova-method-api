@@ -11,10 +11,8 @@ build: ## Build bin file for current OS
 run: ## Build and run application (go run)
 	@go run ./cmd/ova-method-api/main.go
 
-gen: gen-proto ## Code generation
+gen: ## Code generation
 	@go generate ./...
-
-gen-proto:
 	@protoc \
 	--go_out=./pkg/ova-method-api --go_opt=paths=import \
 	--go-grpc_out=./pkg/ova-method-api --go-grpc_opt=paths=import \
@@ -23,10 +21,14 @@ gen-proto:
 test: ## Run tests
 	@go test -cover -race -v ./...
 
+lint: ## Run linter
+	@./bin/golangci-lint run ./...
+
 deps: ## Install service dependencies
 	@go install github.com/pressly/goose/v3/cmd/goose@v3.1
 	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26
 	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./bin v1.42.0
 
 goose: ## Migration manager. Example: make goose cmd="-h"
 	@GOOSE_DRIVER=postgres GOOSE_DBSTRING="user=${DB_USER} password=${DB_PASS} dbname=${DB_NAME} sslmode=disable" goose -table migrations -dir ./migrations $(cmd)

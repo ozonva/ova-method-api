@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -9,17 +10,17 @@ import (
 )
 
 type Connection interface {
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	NamedExec(query string, args interface{}) (sql.Result, error)
-	NamedQuery(query string, args interface{}) (*sqlx.Rows, error)
-	Select(dest interface{}, query string, args ...interface{}) error
-	Get(dest interface{}, query string, args ...interface{}) error
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	NamedExecContext(ctx context.Context, query string, args interface{}) (sql.Result, error)
+	NamedQueryContext(ctx context.Context, query string, args interface{}) (*sqlx.Rows, error)
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 }
 
 type Transactionable interface {
 	Connection
 
-	Beginx() (*sqlx.Tx, error)
+	BeginTxx(ctx context.Context, opts *sql.TxOptions) (*sqlx.Tx, error)
 }
 
 type baseRepo struct {
@@ -30,18 +31,18 @@ func newBaseRepo(conn Connection) baseRepo {
 	return baseRepo{conn}
 }
 
-func (rep *baseRepo) Transaction(fn func(tx *sqlx.Tx) error) error {
+func (rep *baseRepo) Transaction(ctx context.Context, fn func(conn Connection) error) error {
 	txConn, ok := rep.conn.(Transactionable)
 	if !ok {
 		return fmt.Errorf("transactions are not supported")
 	}
 
-	tx, err := txConn.Beginx()
+	tx, err := txConn.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	if err = fn(tx); err != nil {
+	if err = fn(newTxWithContext(tx)); err != nil {
 		if txErr := tx.Rollback(); txErr != nil {
 			return errors.Wrapf(err, "tx error %+v with err:", txErr)
 		}
