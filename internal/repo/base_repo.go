@@ -12,7 +12,7 @@ import (
 type Connection interface {
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	NamedExecContext(ctx context.Context, query string, args interface{}) (sql.Result, error)
-	NamedQueryContext(ctx context.Context, query string, args interface{}) (*sqlx.Rows, error)
+	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 }
@@ -42,7 +42,7 @@ func (rep *baseRepo) Transaction(ctx context.Context, fn func(conn Connection) e
 		return err
 	}
 
-	if err = fn(newTxWithContext(tx)); err != nil {
+	if err = fn(tx); err != nil {
 		if txErr := tx.Rollback(); txErr != nil {
 			return errors.Wrapf(err, "tx error %+v with err:", txErr)
 		}

@@ -22,7 +22,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
-	"github.com/uber/jaeger-client-go/config"
+	jconfig "github.com/uber/jaeger-client-go/config"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -46,23 +46,23 @@ var (
 )
 
 func main() {
-	cnf := getConfig()
+	config := getConfig()
 
-	initLogger(cnf)
-	initOpentracing(cnf)
+	initLogger(config)
+	initOpentracing(config)
 
-	connectToQueue(cnf)
-	connectToDatabase(cnf)
+	connectToQueue(config)
+	connectToDatabase(config)
 
-	startHttpServer(cnf)
-	startGrpcServer(cnf, repo.NewMethodRepo(conn))
+	startHttpServer(config)
+	startGrpcServer(config, repo.NewMethodRepo(conn))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(quit)
 	<-quit
 
-	ctx, cancel := context.WithTimeout(context.Background(), cnf.GetShutdownTime())
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetShutdownTime())
 	defer cancel()
 
 	shutdown(ctx)
@@ -76,46 +76,46 @@ func getConfig() *internal.Application {
 	return internal.LoadConfig(dir)
 }
 
-func initLogger(cnf *internal.Application) {
+func initLogger(config *internal.Application) {
 	var writer io.Writer
 
-	switch cnf.Logging.Driver {
+	switch config.Logging.Driver {
 	case "file":
-		if err := os.MkdirAll(cnf.Logging.FilePath, 0744); err != nil {
-			log.Fatal().Err(err).Str("path", cnf.Logging.FilePath).Msg("failed create log directory")
+		if err := os.MkdirAll(config.Logging.FilePath, 0744); err != nil {
+			log.Fatal().Err(err).Str("path", config.Logging.FilePath).Msg("failed create log directory")
 		}
 
 		writer = &lumberjack.Logger{
-			MaxSize:    cnf.Logging.MaxSizeMb,
-			MaxBackups: cnf.Logging.MaxBackups,
-			MaxAge:     cnf.Logging.MaxAgeDay,
-			Filename:   path.Join(cnf.Logging.FilePath, cnf.Logging.FileName),
+			MaxSize:    config.Logging.MaxSizeMb,
+			MaxBackups: config.Logging.MaxBackups,
+			MaxAge:     config.Logging.MaxAgeDay,
+			Filename:   path.Join(config.Logging.FilePath, config.Logging.FileName),
 		}
 	default:
 		writer = os.Stdout
 	}
 
-	lvl, err := zerolog.ParseLevel(cnf.Logging.Level)
+	level, err := zerolog.ParseLevel(config.Logging.Level)
 	if err != nil {
-		lvl = zerolog.InfoLevel
-		log.Error().Err(err).Str("level", cnf.Logging.Level).Msg("failed parse log level")
+		level = zerolog.InfoLevel
+		log.Error().Err(err).Str("level", config.Logging.Level).Msg("failed parse log level")
 	}
 
-	zerolog.SetGlobalLevel(lvl)
+	zerolog.SetGlobalLevel(level)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: writer, TimeFormat: time.RFC3339})
 }
 
-func initOpentracing(cnf *internal.Application) {
-	cfg := &config.Configuration{
-		ServiceName: cnf.Tracing.ServiceName,
-		Disabled:    cnf.Tracing.Disabled,
-		Sampler: &config.SamplerConfig{
+func initOpentracing(config *internal.Application) {
+	cfg := &jconfig.Configuration{
+		ServiceName: config.Tracing.ServiceName,
+		Disabled:    config.Tracing.Disabled,
+		Sampler: &jconfig.SamplerConfig{
 			Type:  jaeger.SamplerTypeConst,
 			Param: 1,
 		},
 	}
 
-	tracer, closer, err := cfg.NewTracer(config.Logger(jaeger.StdLogger))
+	tracer, closer, err := cfg.NewTracer(jconfig.Logger(jaeger.StdLogger))
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed init tracer")
 	}
@@ -124,22 +124,22 @@ func initOpentracing(cnf *internal.Application) {
 	opentracing.SetGlobalTracer(tracer)
 }
 
-func connectToQueue(cnf *internal.Application) {
-	saramaCnf := sarama.NewConfig()
-	saramaCnf.Producer.Return.Successes = true
+func connectToQueue(config *internal.Application) {
+	saramaConfig := sarama.NewConfig()
+	saramaConfig.Producer.Return.Successes = true
 
-	queue = iqueue.NewKafkaProvider(cnf.Kafka.Brokers, saramaCnf)
+	queue = iqueue.NewKafkaProvider(config.Kafka.Brokers, saramaConfig)
 
 	if err := queue.Connect(); err != nil {
 		log.Fatal().Err(err).Msg("failed connect to queue")
 	}
 }
 
-func connectToDatabase(cnf *internal.Application) {
-	ctx, cancel := context.WithTimeout(context.Background(), cnf.Database.GetConnTimeout())
+func connectToDatabase(config *internal.Application) {
+	ctx, cancel := context.WithTimeout(context.Background(), config.Database.GetConnTimeout())
 	defer cancel()
 
-	db, err := sqlx.Open(cnf.Database.Driver, cnf.Database.String())
+	db, err := sqlx.Open(config.Database.Driver, config.Database.String())
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create db connection")
 	}
@@ -148,35 +148,35 @@ func connectToDatabase(cnf *internal.Application) {
 		log.Fatal().Err(err).Msg("failed ping db connection")
 	}
 
-	db.SetMaxOpenConns(cnf.Database.MaxOpenConns)
-	db.SetMaxIdleConns(cnf.Database.MaxIdleConns)
-	db.SetConnMaxLifetime(cnf.Database.GetConnMaxLifetime())
+	db.SetMaxOpenConns(config.Database.MaxOpenConns)
+	db.SetMaxIdleConns(config.Database.MaxIdleConns)
+	db.SetConnMaxLifetime(config.Database.GetConnMaxLifetime())
 
 	conn = db
 }
 
-func startHttpServer(cnf *internal.Application) {
+func startHttpServer(config *internal.Application) {
 	router := http.NewServeMux()
-	router.Handle(cnf.Monitoring.HttpRoute, promhttp.Handler())
+	router.Handle(config.Monitoring.HttpRoute, promhttp.Handler())
 
-	httpServer = &http.Server{Addr: cnf.Http.Addr, Handler: router}
+	httpServer = &http.Server{Addr: config.Http.Addr, Handler: router}
 
 	go func() {
-		log.Info().Str("addr", cnf.Http.Addr).Msg("HTTP server started")
+		log.Info().Str("addr", config.Http.Addr).Msg("HTTP server started")
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatal().Err(err).Msg("failed start HTTP server")
 		}
 	}()
 }
 
-func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
-	listen, err := net.Listen("tcp", cnf.Grpc.Addr)
+func startGrpcServer(config *internal.Application, rep repo.MethodRepo) {
+	listen, err := net.Listen("tcp", config.Grpc.Addr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create net listen")
 	}
 
-	statusCounters := make([]monitoring.StatusCounter, 0, len(cnf.Monitoring.StatusCounters))
-	for _, counter := range cnf.Monitoring.StatusCounters {
+	statusCounters := make([]monitoring.StatusCounter, 0, len(config.Monitoring.StatusCounters))
+	for _, counter := range config.Monitoring.StatusCounters {
 		statusCounters = append(statusCounters, monitoring.NewStatusCounter(
 			counter.GrpcStatus,
 			counter.GrpcEndpoints,
@@ -187,7 +187,7 @@ func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
 		))
 	}
 
-	tracing := middleware.NewTracingMiddleware(cnf.Tracing.GrpcEndpoints)
+	tracing := middleware.NewTracingMiddleware(config.Tracing.GrpcEndpoints)
 	statusMonitoring := middleware.NewStatusMonitoringMiddleware(statusCounters)
 
 	grpcServer = grpc.NewServer(
@@ -197,7 +197,7 @@ func startGrpcServer(cnf *internal.Application, rep repo.MethodRepo) {
 	igrpc.RegisterOvaMethodApiServer(grpcServer, app.NewOvaMethodApi(rep, queue))
 
 	go func() {
-		log.Info().Str("addr", cnf.Grpc.Addr).Msg("GRPC server started")
+		log.Info().Str("addr", config.Grpc.Addr).Msg("GRPC server started")
 		if err = grpcServer.Serve(listen); err != nil {
 			log.Fatal().Err(err).Msg("failed start GRPC server")
 		}
