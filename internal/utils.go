@@ -78,16 +78,16 @@ func FilterSlice(slice []int) []int {
 	return result
 }
 
-func FlipMap(list map[int]int) map[int]int {
+func FlipMap(list map[int]int) (map[int]int, error) {
 	result := make(map[int]int, len(list))
 	for index, val := range list {
 		if _, ok := result[val]; ok {
-			panic(DuplicateKeyErr)
+			return nil, DuplicateKeyErr
 		}
 		result[val] = index
 	}
 
-	return result
+	return result, nil
 }
 
 func ListOfMethodToUserMap(list []model.Method) (map[uint64]model.Method, error) {

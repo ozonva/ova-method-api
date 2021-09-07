@@ -1,11 +1,13 @@
 package repo
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
 
-	"github.com/jmoiron/sqlx"
 	"ova-method-api/internal/model"
 )
 
@@ -17,12 +19,12 @@ var (
 )
 
 type MethodRepo interface {
-	Add(items []model.Method) ([]model.Method, error)
-	Update(id uint64, value string) error
-	Remove(id uint64) error
-	List(limit, offset uint64) ([]model.Method, error)
-	Describe(id uint64) (*model.Method, error)
-	Transaction(fn func(rep MethodRepo) error) error
+	Add(ctx context.Context, items []model.Method) ([]model.Method, error)
+	Update(ctx context.Context, id uint64, value string) error
+	Remove(ctx context.Context, id uint64) error
+	List(ctx context.Context, limit, offset uint64) ([]model.Method, error)
+	Describe(ctx context.Context, id uint64) (*model.Method, error)
+	Transaction(ctx context.Context, fn func(rep MethodRepo) error) error
 }
 
 type methodRepo struct {
@@ -33,17 +35,29 @@ func NewMethodRepo(conn Connection) MethodRepo {
 	return &methodRepo{newBaseRepo(conn)}
 }
 
-func (rep *methodRepo) Transaction(fn func(rep MethodRepo) error) error {
-	return rep.baseRepo.Transaction(func(tx *sqlx.Tx) error {
-		return fn(NewMethodRepo(tx))
+func (rep *methodRepo) Transaction(ctx context.Context, fn func(rep MethodRepo) error) error {
+	return rep.baseRepo.Transaction(ctx, func(conn Connection) error {
+		return fn(NewMethodRepo(conn))
 	})
 }
 
-func (rep *methodRepo) Add(items []model.Method) ([]model.Method, error) {
-	rows, err := rep.conn.NamedQuery(
-		"INSERT INTO methods (user_id,value) VALUES(:user_id,:value) RETURNING id, user_id, value, created_at",
-		items,
-	)
+func (rep *methodRepo) Add(ctx context.Context, items []model.Method) ([]model.Method, error) {
+	builder := squirrel.
+		Insert("methods").
+		Columns("user_id", "value").
+		Suffix("RETURNING id, user_id, value, created_at").
+		PlaceholderFormat(squirrel.Dollar)
+
+	for _, item := range items {
+		builder = builder.Values(item.UserId, item.Value)
+	}
+
+	query, args, err := builder.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := rep.conn.QueryxContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +85,19 @@ func (rep *methodRepo) Add(items []model.Method) ([]model.Method, error) {
 	return result, withCloseRows(nil)
 }
 
-func (rep *methodRepo) Update(id uint64, value string) error {
-	res, err := rep.conn.Exec("update methods set value=$1 where id=$2", value, id)
+func (rep *methodRepo) Update(ctx context.Context, id uint64, value string) error {
+	query, args, err := squirrel.
+		Update("methods").
+		Set("value", value).
+		Where(squirrel.Eq{"id": id}).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
+
+	if err != nil {
+		return err
+	}
+
+	res, err := rep.conn.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}
@@ -88,8 +113,18 @@ func (rep *methodRepo) Update(id uint64, value string) error {
 	return nil
 }
 
-func (rep *methodRepo) Remove(id uint64) error {
-	res, err := rep.conn.Exec("DELETE FROM methods WHERE id=$1", id)
+func (rep *methodRepo) Remove(ctx context.Context, id uint64) error {
+	query, args, err := squirrel.
+		Delete("methods").
+		Where(squirrel.Eq{"id": id}).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
+
+	if err != nil {
+		return err
+	}
+
+	res, err := rep.conn.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}
@@ -105,14 +140,21 @@ func (rep *methodRepo) Remove(id uint64) error {
 	return nil
 }
 
-func (rep *methodRepo) List(limit, offset uint64) ([]model.Method, error) {
+func (rep *methodRepo) List(ctx context.Context, limit, offset uint64) ([]model.Method, error) {
+	query, args, err := squirrel.
+		Select("*").
+		From("methods").
+		OrderBy("id asc").
+		Limit(limit).
+		Offset(offset).
+		ToSql()
+
+	if err != nil {
+		return nil, err
+	}
+
 	var result []model.Method
-	err := rep.conn.Select(
-		&result,
-		"SELECT * FROM methods ORDER BY id LIMIT $1 OFFSET $2",
-		limit,
-		offset,
-	)
+	err = rep.conn.SelectContext(ctx, &result, query, args...)
 
 	if err == sql.ErrNoRows {
 		return nil, ErrNoRows
@@ -125,9 +167,20 @@ func (rep *methodRepo) List(limit, offset uint64) ([]model.Method, error) {
 	return result, nil
 }
 
-func (rep *methodRepo) Describe(id uint64) (*model.Method, error) {
+func (rep *methodRepo) Describe(ctx context.Context, id uint64) (*model.Method, error) {
+	query, args, err := squirrel.
+		Select("*").
+		From("methods").
+		Where(squirrel.Eq{"id": id}).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
+
+	if err != nil {
+		return nil, err
+	}
+
 	var result model.Method
-	err := rep.conn.Get(&result, "select * from methods WHERE id=$1", id)
+	err = rep.conn.GetContext(ctx, &result, query, args...)
 
 	if err == sql.ErrNoRows {
 		return nil, ErrNoRows

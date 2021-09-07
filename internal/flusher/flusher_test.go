@@ -1,6 +1,7 @@
 package flusher
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -23,7 +24,8 @@ var _ = Describe("Flusher", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		rep  = mock.NewMockMethodRepo(ctrl)
 
-		flushErr = fmt.Errorf("flush error")
+		flushErr   = fmt.Errorf("flush error")
+		defaultCtx = context.Background()
 	)
 	defer ctrl.Finish()
 
@@ -32,7 +34,7 @@ var _ = Describe("Flusher", func() {
 
 		DescribeTable("not flushed",
 			func(chunkSize int, toFlush []model.Method, expected []model.Method) {
-				result := New(chunkSize, rep).Flush(toFlush)
+				result := New(chunkSize, rep).Flush(defaultCtx, toFlush)
 				Expect(result).To(Equal(expected))
 			},
 			Entry("chunk 0", 0, sequence, sequence),
@@ -42,8 +44,8 @@ var _ = Describe("Flusher", func() {
 
 		DescribeTable("repository add equal",
 			func(toFlush []model.Method, expected []model.Method, err error) {
-				rep.EXPECT().Add(toFlush).Return(nil, err)
-				result := New(len(toFlush), rep).Flush(toFlush)
+				rep.EXPECT().Add(defaultCtx, toFlush).Return(nil, err)
+				result := New(len(toFlush), rep).Flush(defaultCtx, toFlush)
 				Expect(result).To(Equal(expected))
 			},
 			Entry("add error", sequence, sequence, flushErr),
@@ -51,10 +53,10 @@ var _ = Describe("Flusher", func() {
 		)
 
 		It("partial flush", func() {
-			rep.EXPECT().Add([]model.Method{{UserId: 1}}).Return(nil, nil)
-			rep.EXPECT().Add([]model.Method{{UserId: 2}}).Return(nil, flushErr)
+			rep.EXPECT().Add(defaultCtx, []model.Method{{UserId: 1}}).Return(nil, nil)
+			rep.EXPECT().Add(defaultCtx, []model.Method{{UserId: 2}}).Return(nil, flushErr)
 
-			result := New(1, rep).Flush([]model.Method{{UserId: 1}, {UserId: 2}})
+			result := New(1, rep).Flush(defaultCtx, []model.Method{{UserId: 1}, {UserId: 2}})
 
 			Expect(result).To(Equal([]model.Method{{UserId: 2}}))
 		})

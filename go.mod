@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
+	github.com/Masterminds/squirrel v1.5.0
 	github.com/Shopify/sarama v1.29.1
 	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
@@ -23,4 +24,5 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.26.0
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )

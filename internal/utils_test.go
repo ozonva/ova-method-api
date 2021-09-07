@@ -9,10 +9,10 @@ import (
 
 func TestFlipMap(t *testing.T) {
 	testCases := []struct {
-		sequence      map[int]int
-		expectedSeq   map[int]int
-		expectedRes   map[int]int
-		panicExpected bool
+		sequence    map[int]int
+		expectedSeq map[int]int
+		expectedRes map[int]int
+		expectedErr error
 	}{
 		{
 			sequence:    nil,
@@ -35,10 +35,10 @@ func TestFlipMap(t *testing.T) {
 			expectedRes: map[int]int{2: 1},
 		},
 		{
-			sequence:      map[int]int{1: 2, 2: 2},
-			expectedSeq:   map[int]int{1: 2, 2: 2},
-			expectedRes:   map[int]int{2: 2},
-			panicExpected: true,
+			sequence:    map[int]int{1: 2, 2: 2},
+			expectedSeq: map[int]int{1: 2, 2: 2},
+			expectedRes: nil,
+			expectedErr: DuplicateKeyErr,
 		},
 		{
 			sequence:    map[int]int{1: 2, 2: 3},
@@ -48,12 +48,10 @@ func TestFlipMap(t *testing.T) {
 	}
 
 	for index, testCase := range testCases {
-		if testCase.panicExpected {
-			assertPanic(t, index, func() { FlipMap(testCase.sequence) })
-			continue
+		result, err := FlipMap(testCase.sequence)
+		if err != testCase.expectedErr {
+			testWantError(t, index, testCase.expectedErr, err)
 		}
-
-		result := FlipMap(testCase.sequence)
 		if !reflect.DeepEqual(result, testCase.expectedRes) {
 			testAssertError(t, index, testCase.expectedRes, result)
 		}
@@ -285,15 +283,6 @@ func TestListOfMethodToChunkSlice(t *testing.T) {
 			testMutateError(t, index, testCase.expectedRes, result)
 		}
 	}
-}
-
-func assertPanic(t *testing.T, index int, cb func()) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("failed testCase[%d], panic expected", index)
-		}
-	}()
-	cb()
 }
 
 func testWantError(t *testing.T, index int, expectedErr, err error) {

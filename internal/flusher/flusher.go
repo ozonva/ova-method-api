@@ -1,6 +1,7 @@
 package flusher
 
 import (
+	"context"
 	"log"
 
 	"ova-method-api/internal"
@@ -9,7 +10,7 @@ import (
 )
 
 type Flusher interface {
-	Flush(items []model.Method) []model.Method
+	Flush(ctx context.Context, items []model.Method) []model.Method
 }
 
 type flusher struct {
@@ -24,7 +25,7 @@ func New(chunkSize int, methodRepo repo.MethodRepo) Flusher {
 	}
 }
 
-func (f *flusher) Flush(items []model.Method) []model.Method {
+func (f *flusher) Flush(ctx context.Context, items []model.Method) []model.Method {
 	chunkedItems, err := internal.ListOfMethodToChunkSlice(items, f.chunkSize)
 	if err != nil {
 		log.Println(err)
@@ -33,7 +34,7 @@ func (f *flusher) Flush(items []model.Method) []model.Method {
 
 	var result []model.Method
 	for _, chunk := range chunkedItems {
-		if _, err = f.methodRepo.Add(chunk); err != nil {
+		if _, err = f.methodRepo.Add(ctx, chunk); err != nil {
 			log.Println(err)
 			result = append(result, chunk...)
 		}
