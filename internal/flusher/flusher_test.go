@@ -42,7 +42,7 @@ var _ = Describe("Flusher", func() {
 
 		DescribeTable("repository add equal",
 			func(toFlush []model.Method, expected []model.Method, err error) {
-				rep.EXPECT().Add(toFlush).Return(err)
+				rep.EXPECT().Add(toFlush).Return(nil, err)
 				result := New(len(toFlush), rep).Flush(toFlush)
 				Expect(result).To(Equal(expected))
 			},
@@ -51,8 +51,8 @@ var _ = Describe("Flusher", func() {
 		)
 
 		It("partial flush", func() {
-			rep.EXPECT().Add([]model.Method{{UserId: 1}}).Return(nil)
-			rep.EXPECT().Add([]model.Method{{UserId: 2}}).Return(flushErr)
+			rep.EXPECT().Add([]model.Method{{UserId: 1}}).Return(nil, nil)
+			rep.EXPECT().Add([]model.Method{{UserId: 2}}).Return(nil, flushErr)
 
 			result := New(1, rep).Flush([]model.Method{{UserId: 1}, {UserId: 2}})
 

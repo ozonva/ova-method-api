@@ -8,13 +8,51 @@ import (
 )
 
 type Application struct {
-	Version  string
-	Grpc     grpcConfig
-	Database databaseConfig
+	Version     string
+	ShutdownSec int
+
+	Tracing    tracingConfig
+	Monitoring monitoringConfig
+	Http       httpConfig
+	Grpc       grpcConfig
+	Kafka      kafkaConfig
+	Database   databaseConfig
+}
+
+func (app *Application) GetShutdownTime() time.Duration {
+	return time.Duration(app.ShutdownSec) * time.Second
+}
+
+type tracingConfig struct {
+	Disabled    bool
+	ServiceName string
+
+	GrpcEndpoints map[string]string
+}
+
+type monitoringConfig struct {
+	HttpRoute      string
+	StatusCounters []monitoringCounterConfig
+}
+
+type monitoringCounterConfig struct {
+	Name string
+	Desc string
+
+	GrpcStatus    string
+	GrpcEndpoints []string
+}
+
+type httpConfig struct {
+	Addr string
 }
 
 type grpcConfig struct {
 	Addr string
+}
+
+type kafkaConfig struct {
+	Brokers []string
 }
 
 type databaseConfig struct {

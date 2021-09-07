@@ -13,3 +13,37 @@ services:
       - "5432:5432"
     volumes:
       - ./../storage/db:/var/lib/postgresql/data
+
+  jaegert:
+    container_name: ova.jaegert
+    image: jaegertracing/all-in-one:latest
+    restart: always
+    ports:
+      - "16686:16686"
+      - "6831:6831/udp"
+
+  zookeeper:
+    container_name: ova.zookeeper
+    image: bitnami/zookeeper:latest
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: 1
+    ports:
+      - "2181:2181"
+    volumes:
+      - ./../storage/zookeeper:/bitnami/zookeeper
+
+  kafka:
+    container_name: ova.kafka
+    image: bitnami/kafka:latest
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      ALLOW_PLAINTEXT_LISTENER: 1
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./../storage/kafka:/bitnami/kafka
+    depends_on:
+      - zookeeper

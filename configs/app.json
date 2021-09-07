@@ -1,8 +1,45 @@
 {
   "version": "1.0.0",
+  "shutdownSec": 4,
+
+  "tracing": {
+    "serviceName": "OvaMethodApi",
+    "disabled": false,
+
+    "grpcEndpoints": {
+      "/ova.method.api.OvaMethodApi/MultiCreate": "OvaMethodApi/MultiCreate"
+    }
+  },
+
+  "monitoring": {
+    "httpRoute": "/metrics",
+    "statusCounters": [
+      {
+        "name": "status_ok",
+        "desc": "number of successful requests",
+        "grpcStatus": "OK",
+        "grpcEndpoints": [
+          "/ova.method.api.OvaMethodApi/Create",
+          "/ova.method.api.OvaMethodApi/MultiCreate",
+          "/ova.method.api.OvaMethodApi/Update",
+          "/ova.method.api.OvaMethodApi/Remove"
+        ]
+      }
+    ]
+  },
+
+  "http": {
+    "addr": "localhost:3001"
+  },
 
   "grpc": {
     "addr": "localhost:3000"
+  },
+
+  "kafka": {
+    "brokers": [
+      "localhost:9092"
+    ]
   },
 
   "database": {
@@ -13,10 +50,10 @@
     "pass": "123456",
     "db": "ova",
 
-    "MaxOpenConns": 2,
-    "MaxIdleConns": 1,
+    "maxOpenConns": 2,
+    "maxIdleConns": 1,
 
-    "ConnTimeoutMs": 300,
-    "ConnMaxLifetimeSec": 300
+    "connTimeoutMs": 300,
+    "connMaxLifetimeSec": 300
   }
 }
